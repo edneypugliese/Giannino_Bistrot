@@ -1,7 +1,9 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, onIdTokenChanged, signInWithPopup, signOut } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, onIdTokenChanged, signInWithPopup, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 import { createCatalogClient } from "./catalog-store.js";
+import { createAdminAuth } from "./admin-auth.js";
+export { ADMIN_EMAIL, ADMIN_USERNAME } from "./admin-auth.js";
 
 // Configuração pública do aplicativo web. A autorização é aplicada pelo Firestore.
 export const app = initializeApp({
@@ -15,51 +17,11 @@ export const app = initializeApp({
 export const auth = getAuth(app);
 export const db = getFirestore(app, "catalogo");
 export const catalogClient = createCatalogClient(db);
-export const ADMIN_EMAIL = "edneypugleise@gmail.com";
 
-function denied() {
-  return Object.assign(new Error("Accesso negato. Questo account Google non è autorizzato."), { code: "admin/access-denied" });
-}
-
-async function verifyAdmin(user) {
-  const { claims } = await user.getIdTokenResult();
-  if (claims.email !== ADMIN_EMAIL || claims.email_verified !== true || claims.firebase?.sign_in_provider !== "google.com") {
-    throw denied();
-  }
-  // Anche una pagina modificata nel browser deve superare le regole sul server.
-  await getDocFromServer(doc(db, "sections", "menu"));
-  return user;
-}
-
-export async function signInWithGoogle() {
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: "select_account" });
-  const { user } = await signInWithPopup(auth, provider);
-  try {
-    return await verifyAdmin(user);
-  } catch (error) {
-    await signOut(auth);
-    throw error;
-  }
-}
-
-export function subscribeAdminAuth(listener) {
-  let generation = 0;
-  const unsubscribe = onIdTokenChanged(auth, async user => {
-    const current = ++generation;
-    if (!user) { listener({ user: null, loading: false, error: null }); return; }
-    listener({ user: null, loading: true, error: null });
-    try {
-      await verifyAdmin(user);
-      if (current === generation) listener({ user, loading: false, error: null });
-    } catch (error) {
-      if (current !== generation) return;
-      // Non conservare sessioni di altri account nella pagina amministrativa.
-      if (error.code === "admin/access-denied") await signOut(auth);
-      if (current === generation || error.code === "admin/access-denied") listener({ user: null, loading: false, error });
-    }
-  }, error => listener({ user: null, loading: false, error }));
-  return () => { generation++; unsubscribe(); };
-}
-
-export function signOutAdmin() { return signOut(auth); }
+const adminAuth = createAdminAuth({
+  auth,
+  sdk: { GoogleAuthProvider, onIdTokenChanged, signInWithPopup, signInWithEmailAndPassword, signOut },
+  // Conferma a autorização no servidor antes de abrir o painel.
+  verifyAccess: () => getDocFromServer(doc(db, "sections", "menu")),
+});
+export const { signInWithGoogle, signInWithPassword, subscribeAdminAuth, signOutAdmin } = adminAuth;

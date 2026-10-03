@@ -14,7 +14,7 @@ service cloud.firestore {
       return request.auth != null
         && request.auth.token.email == 'edneypugleise@gmail.com'
         && request.auth.token.email_verified == true
-        && request.auth.token.firebase.sign_in_provider == 'google.com';
+        && request.auth.token.firebase.sign_in_provider in ['google.com', 'password'];
     }
     function validId(id) {
       return id is string && id.matches('^[a-zA-Z0-9_-]{1,128}$');

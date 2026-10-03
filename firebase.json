@@ -3,7 +3,7 @@
     "authorizedDomains": ["giannino-bistrot.firebaseapp.com", "giannino-bistrot.web.app", "edneypugliese.github.io"],
     "providers": {
       "anonymous": false,
-      "emailPassword": false,
+      "emailPassword": true,
       "googleSignIn": {
         "oAuthBrandDisplayName": "Giannino Bistrot Cafè",
         "supportEmail": "edneypugleise@gmail.com"

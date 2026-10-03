@@ -97,14 +97,18 @@ $env:NODE_OPTIONS = (($env:NODE_OPTIONS + ' --use-system-ca').Trim())
 ## Acesso e configuração
 
 O aplicativo web **Giannino Bistrot Web** usa Firebase Authentication com
-Google Sign-In. O domínio autorizado do site é `edneypugliese.github.io`.
+Google Sign-In e email/senha. O domínio autorizado do site é `edneypugliese.github.io`.
 O login está em `/Giannino_Bistrot/admin/login/` e o painel em `/Giannino_Bistrot/admin/`.
 
 As regras exigem `email == edneypugleise@gmail.com`, `email_verified == true`
-e `firebase.sign_in_provider == google.com` para ler o catálogo administrativo
+e `firebase.sign_in_provider` igual a `google.com` ou `password` para ler o catálogo administrativo
 ou gravar dados. O frontend confere os mesmos critérios, consulta o Firestore
 para confirmar a autorização no servidor e desconecta contas não autorizadas.
-Somente Google Sign-In está habilitado; email/senha e login anônimo estão desativados.
+O usuário `admin` é um alias da conta autorizada; também é possível preencher
+o email dessa conta no campo de usuário. A senha anterior foi vinculada à mesma
+conta Firebase, preservando seu UID e o vínculo Google. O login anônimo está
+desativado. Credenciais incorretas e contas sem permissão recebem a mensagem
+genérica **Accesso non autorizzato**, com cores e tipografia do site.
 
 Categorias e produtos validam campos, tipos e limites em criação e atualização.
 As mutações exigem incremento transacional de `_catalog/revision`, datas de
@@ -128,10 +132,18 @@ npx -y firebase-tools@latest deploy --only auth,firestore --project giannino-bis
 npm run firebase:auth-config
 ```
 
-`firebase:auth-config` aplica e verifica os domínios e desativa os provedores
-anônimo e email/senha pela Identity Toolkit API. A CLI utilizada habilita o
+`firebase:auth-config` aplica e verifica os domínios, habilita email/senha com
+senha obrigatória e desativa o login anônimo pela Identity Toolkit API. A CLI utilizada habilita o
 Google, mas não aplica `authorizedDomains` nem os valores `false` dos outros
 provedores. Execute o comando acima após mudar a configuração de autenticação.
+
+`npm run firebase:password-migrate -- --dry-run` valida a credencial anterior,
+e `npm run firebase:password-migrate` faz a migração única via IAM. O script
+lê os arquivos privados e ignorados em `.local`, confere a senha contra o hash
+antigo e atualiza somente a senha da conta Google autorizada. Se essa conta
+já possui senha, preserva a senha existente. Nenhuma credencial entra no Git,
+no pacote publicado ou nos logs. A publicação e o login não dependem desses
+arquivos após a migração.
 
 O site é hospedado exclusivamente no GitHub Pages. Os catálogos públicos
 consultam as projeções do Firestore e usam os JSON de `data/site.json` como
@@ -140,7 +152,7 @@ na mesma transação. Alterações diretas no Console exigem republicar as proje
 com `node scripts/publish-catalog.mjs`; esse comando não modifica os registros originais.
 
 `src/firebase-client.js` contém a configuração pública do aplicativo, os exports
-`app`, `auth`, `db`, `catalogClient`, `subscribeAdminAuth`, `signInWithGoogle`
+`app`, `auth`, `db`, `catalogClient`, `subscribeAdminAuth`, `signInWithGoogle`, `signInWithPassword`
 e `signOutAdmin`. `npm run build:firebase` gera `public/assets/firebase-client.js`,
 também gerado automaticamente pelo build do Pages. Não há chaves privadas
 ou credenciais de servidor no pacote publicado. Use `npm ci` para preparar

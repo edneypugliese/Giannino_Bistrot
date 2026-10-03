@@ -11,16 +11,17 @@ const data = {
   name,
   authorizedDomains: config.auth.authorizedDomains,
   signIn: {
-    email: { enabled: config.auth.providers.emailPassword === true },
+    email: { enabled: config.auth.providers.emailPassword === true, passwordRequired: true },
     anonymous: { enabled: config.auth.providers.anonymous === true },
   },
 };
 await authClient.request({
   url: `https://identitytoolkit.googleapis.com/admin/v2/${name}`,
-  method: "PATCH", params: { updateMask: "authorizedDomains,signIn.email.enabled,signIn.anonymous.enabled" }, data,
+  method: "PATCH", params: { updateMask: "authorizedDomains,signIn.email.enabled,signIn.email.passwordRequired,signIn.anonymous.enabled" }, data,
 });
 const { data: actual } = await authClient.request({ url: `https://identitytoolkit.googleapis.com/admin/v2/${name}` });
 assert.deepEqual([...actual.authorizedDomains].sort(), [...data.authorizedDomains].sort());
 assert.equal(actual.signIn.email.enabled === true, data.signIn.email.enabled);
+assert.equal(actual.signIn.email.passwordRequired, true);
 assert.equal(actual.signIn.anonymous.enabled === true, data.signIn.anonymous.enabled);
 console.log(JSON.stringify({ project, authorizedDomains: actual.authorizedDomains, emailPassword: actual.signIn.email.enabled === true, anonymous: actual.signIn.anonymous.enabled === true }, null, 2));

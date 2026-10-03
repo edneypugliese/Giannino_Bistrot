@@ -4,7 +4,7 @@ Site público disponível exclusivamente no [GitHub Pages](https://edneypugliese
 
 Para acessar, abra o link acima ou dê dois cliques em **abrir-site.cmd**. O atalho abre o endereço online no navegador. A administração funciona online com Firebase; o projeto não possui servidor ou autenticação locais.
 
-O cadeado do cabeçalho abre [Accesso amministratore](https://edneypugliese.github.io/Giannino_Bistrot/admin/login/). Clique em **ACCEDI CON GOOGLE**. Somente a conta **edneypugleise@gmail.com**, com e-mail verificado e login Google, pode abrir o painel e acessar os registros administrativos. Outras contas recebem **Accesso negato** e são desconectadas. As regras do Firestore também aplicam essa restrição.
+O cadeado do cabeçalho abre [Accesso amministratore](https://edneypugliese.github.io/Giannino_Bistrot/admin/login/). Entre com o usuário **admin** e a senha anterior, ou clique em **ACCEDI CON GOOGLE**. Ambos os métodos usam Firebase Authentication e autorizam somente **edneypugleise@gmail.com**, com e-mail verificado. Contas não autorizadas e credenciais incorretas recebem **Accesso non autorizzato**, em uma mensagem com o tema do site. Contas sem permissão são desconectadas, e as regras do Firestore também aplicam a restrição.
 
 ## Publicação
 
