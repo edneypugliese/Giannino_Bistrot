@@ -11,7 +11,7 @@ function marker(source, value) {
 }
 
 // O código TSX original não está disponível. Os limites abaixo são verificados
-// antes de remover o SDK de autenticação e as telas administrativas do bundle.
+// antes de substituir a administração original pelo login Google online.
 export function preparePublicApp(original) {
   const sdkStart = marker(original, "function Wi(n,a)");
   const homeStart = marker(original, "const ad={");
@@ -27,7 +27,8 @@ export function preparePublicApp(original) {
   if (!source.slice(adminLinkStart, adminLinkEnd).includes('"src/components/TopBar.tsx:51:10"')) {
     throw new Error("O botão administrativo da referência mudou.");
   }
-  source = source.slice(0, adminLinkStart) + source.slice(adminLinkEnd);
+  const adminLink = source.slice(adminLinkStart, adminLinkEnd).replace('to:"/admin"', 'to:"/admin/login"');
+  source = source.slice(0, adminLinkStart) + "__GOOGLE_ADMIN_LINK__" + source.slice(adminLinkEnd);
 
   for (const [signature, publicFetch, replacement] of [
     ["async function Fi(n=!1){", 'const a=await fetch("/api/pages")', "async function Fi(){"],
@@ -43,12 +44,15 @@ export function preparePublicApp(original) {
   if (/\/admin|\/api\/auth|localAuthClient|includeHidden|\b_d\b/.test(source)) {
     throw new Error("O frontend público ainda contém uma dependência administrativa.");
   }
+  // Mantém o cadeado no cabeçalho, apontando para a autenticação Google.
+  source = source.replace("__GOOGLE_ADMIN_LINK__", adminLink);
   const app = `
+const GoogleAdmin = createGoogleAdmin(S, { useNavigate: Xi, Link: us });
 function u4(){
   const routes = [
     ["/", DS], ["/menu", Pr, "menu"], ["/caffetteria", Pr, "caffetteria"],
     ["/drink", Pr, "drink"], ["/vini", Pr, "vini"], ["/contatti", qS],
-    ["/p/:slug", Pr], ["*", g0],
+    ["/p/:slug", Pr], ["/admin/login", GoogleAdmin], ["/admin", GoogleAdmin], ["*", g0],
   ];
   return u.jsx(B_,{children:u.jsx(_b,{basename:pagesBasePath,children:u.jsx(Zv,{
     children:u.jsx(Jt,{
@@ -59,7 +63,7 @@ function u4(){
   })})});
 }
 `;
-  return 'import { pagesFetch as fetch, pagesBasePath } from "./pages-runtime.js";\n' + source + app + original.slice(renderStart);
+  return 'import { pagesFetch as fetch, pagesBasePath } from "./pages-runtime.js";\nimport { createGoogleAdmin } from "./google-admin.js";\n' + source + app + original.slice(renderStart);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

@@ -2,7 +2,9 @@
 
 Site público disponível exclusivamente no [GitHub Pages](https://edneypugliese.github.io/Giannino_Bistrot/), com a aparência e os conteúdos públicos do [site de referência](https://wrg41y-n2xaqy6l5-arcedawebapps1.vercel.app/).
 
-Para acessar, abra o link acima ou dê dois cliques em **abrir-site.cmd**. O atalho abre o endereço online no navegador. O projeto não possui servidor, painel, autenticação nem serviço de uploads locais.
+Para acessar, abra o link acima ou dê dois cliques em **abrir-site.cmd**. O atalho abre o endereço online no navegador. A administração funciona online com Firebase; o projeto não possui servidor ou autenticação locais.
+
+O cadeado do cabeçalho abre [Accesso amministratore](https://edneypugliese.github.io/Giannino_Bistrot/admin/login/). Clique em **ACCEDI CON GOOGLE**. Somente a conta **edneypugleise@gmail.com**, com e-mail verificado e login Google, pode abrir o painel e acessar os registros administrativos. Outras contas recebem **Accesso negato** e são desconectadas. As regras do Firestore também aplicam essa restrição.
 
 ## Publicação
 
@@ -12,13 +14,13 @@ O workflow `.github/workflows/pages.yml` verifica a sintaxe, executa os testes, 
 
 O build exporta apenas conteúdos visíveis e produtos disponíveis, ajusta caminhos de imagens e fontes e cria entradas para os links diretos de Home, Menù, Caffetteria, Drink List, Carta dei Vini, Contatti e páginas personalizadas. As entradas `/admin` e `/admin/login` estão reservadas à integração da administração online com Firebase. Rotas inexistentes exibem a página de conteúdo não encontrado.
 
-O build e os testes usam apenas bibliotecas nativas do Node.js 20 ou superior, sem precisar de `npm install`. O servidor de hospedagem é o próprio GitHub Pages.
+Use `npm ci` antes do build ou dos testes. O build prepara o Firebase Web SDK com esbuild e inclui esse módulo no pacote estático. O servidor de hospedagem é o próprio GitHub Pages.
 
 ## Atualizar os conteúdos
 
 Edite `data/site.json` para alterar textos, contatos, categorias, produtos, preços, disponibilidade e tema. Adicione imagens em `public/img/` e use caminhos como `/img/foto.jpg` no snapshot. Faça commit e push na `main`; o workflow publica as alterações.
 
-Arquivos e credenciais da antiga versão local não são utilizados pela publicação. Firebase também não é necessário para exibir o site.
+Os catálogos públicos consultam as projeções do Firestore atualizadas pelo painel. Se essa consulta falhar, exibem o snapshot publicado no Pages. Home, tema e contatos continuam usando o snapshot. Arquivos e credenciais da antiga versão local não são utilizados pela publicação.
 
 ## Conteúdo preservado
 
@@ -53,7 +55,7 @@ O código-fonte TSX original não está disponível. A preparação do frontend 
 
 ## Firebase
 
-O Firestore do projeto **giannino-bistrot**, banco **catalogo**, possui uma cópia dos catálogos. Consulte a [documentação das ferramentas de importação](docs/firebase.md). A publicação no Pages usa `data/site.json`; alterações feitas no Console Firebase não são sincronizadas automaticamente com o site. As ferramentas opcionais de migração precisam de `npm ci`.
+O Firestore do projeto **giannino-bistrot**, banco **catalogo**, guarda os catálogos administrados online. Consulte a [documentação Firebase](docs/firebase.md) e a [documentação do painel](docs/menu-manager.md). As alterações pelo painel atualizam as projeções públicas na mesma transação. Depois de editar diretamente no Console, reconstrua as projeções com `node scripts/publish-catalog.mjs`.
 
 ## Verificação
 

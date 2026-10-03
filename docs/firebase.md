@@ -96,23 +96,52 @@ $env:NODE_OPTIONS = (($env:NODE_OPTIONS + ' --use-system-ca').Trim())
 
 ## Acesso e configuração
 
-As regras de segurança são um protótipo fechado: negam leitura e escrita
-diretas a clientes web/mobile. A administração pelo Console Firebase e as
-ferramentas de servidor usam as permissões IAM do projeto. Revise as regras ao
-implementar novos acessos. Os índices em `firestore.indexes.json` permitem
-consultas por seção ou categoria com ordenação.
+O aplicativo web **Giannino Bistrot Web** usa Firebase Authentication com
+Google Sign-In. O domínio autorizado do site é `edneypugliese.github.io`.
+O login está em `/Giannino_Bistrot/admin/login/` e o painel em `/Giannino_Bistrot/admin/`.
+
+As regras exigem `email == edneypugleise@gmail.com`, `email_verified == true`
+e `firebase.sign_in_provider == google.com` para ler o catálogo administrativo
+ou gravar dados. O frontend confere os mesmos critérios, consulta o Firestore
+para confirmar a autorização no servidor e desconecta contas não autorizadas.
+Somente Google Sign-In está habilitado; email/senha e login anônimo estão desativados.
+
+Categorias e produtos validam campos, tipos e limites em criação e atualização.
+As mutações exigem incremento transacional de `_catalog/revision`, datas de
+atualização geradas pelo servidor e preservação da data de criação. As seções
+são somente leitura no painel. `_imports` e caminhos não previstos continuam
+fechados aos clientes. O Console e as ferramentas de migração usam permissões IAM.
+
+`public_catalogs/{menu|caffetteria|drink|vini}` permite leitura individual pública
+das projeções de itens publicados. Listagem, exclusão e escrita não autorizada
+são negadas. As projeções omitem dados administrativos e itens ocultos.
+Os índices em `firestore.indexes.json` permitem consultas por seção ou categoria.
+
+O comando `npm run firebase:security` testa as regras com a Firebase Rules API:
+inclui contas de outros e-mails, email não verificado, outro provedor, ausência
+de sessão, injeção de campos e dados inválidos. Ele precisa da sessão CLI;
+os pedidos de teste e documentos relacionados são simulados, sem gravar produtos.
 
 ```powershell
-npx -y firebase-tools@latest deploy --only firestore --project giannino-bistrot --dry-run
-npx -y firebase-tools@latest deploy --only firestore --project giannino-bistrot
+npx -y firebase-tools@latest deploy --only auth,firestore --project giannino-bistrot --dry-run
+npx -y firebase-tools@latest deploy --only auth,firestore --project giannino-bistrot
+npm run firebase:auth-config
 ```
 
-O site é hospedado exclusivamente no GitHub Pages e lê os JSON gerados a
-partir de `data/site.json`. O banco remoto e as ferramentas de migração são
-independentes dessa publicação. Alterações no Console Firebase não atualizam
-automaticamente o snapshot nem o site. Não é necessário registrar um aplicativo
-web para administrar este banco pelo Console ou pelas ferramentas de migração.
+`firebase:auth-config` aplica e verifica os domínios e desativa os provedores
+anônimo e email/senha pela Identity Toolkit API. A CLI utilizada habilita o
+Google, mas não aplica `authorizedDomains` nem os valores `false` dos outros
+provedores. Execute o comando acima após mudar a configuração de autenticação.
 
-As dependências Firebase são ferramentas de desenvolvimento e não são
-incluídas no pacote do site. O build e os testes da publicação usam bibliotecas
-nativas do Node.js.
+O site é hospedado exclusivamente no GitHub Pages. Os catálogos públicos
+consultam as projeções do Firestore e usam os JSON de `data/site.json` como
+fallback se a consulta remota falhar. O painel atualiza os dados e as projeções
+na mesma transação. Alterações diretas no Console exigem republicar as projeções
+com `node scripts/publish-catalog.mjs`; esse comando não modifica os registros originais.
+
+`src/firebase-client.js` contém a configuração pública do aplicativo, os exports
+`app`, `auth`, `db`, `catalogClient`, `subscribeAdminAuth`, `signInWithGoogle`
+e `signOutAdmin`. `npm run build:firebase` gera `public/assets/firebase-client.js`,
+também gerado automaticamente pelo build do Pages. Não há chaves privadas
+ou credenciais de servidor no pacote publicado. Use `npm ci` para preparar
+as dependências antes de construir ou testar o site.

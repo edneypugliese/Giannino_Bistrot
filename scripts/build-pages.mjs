@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { buildFirebase } from "./build-firebase.mjs";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const ordered = rows => [...rows].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
@@ -61,6 +62,7 @@ export async function buildPages({ basePath = process.env.PAGES_BASE_PATH || "/G
   if (basename(outDir) !== "dist" || containsProject) {
     throw new Error("A saída deve ser uma pasta dist que não contenha o projeto.");
   }
+  await buildFirebase();
   site ||= JSON.parse(await readFile(join(ROOT, "data/site.json"), "utf8"));
   const responses = publicResponses(site);
   let app = await readFile(join(ROOT, "public/assets/app.js"), "utf8");

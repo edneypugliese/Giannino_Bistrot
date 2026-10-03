@@ -1,4 +1,15 @@
 {
+  "auth": {
+    "authorizedDomains": ["giannino-bistrot.firebaseapp.com", "giannino-bistrot.web.app", "edneypugliese.github.io"],
+    "providers": {
+      "anonymous": false,
+      "emailPassword": false,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Giannino Bistrot Cafè",
+        "supportEmail": "edneypugleise@gmail.com"
+      }
+    }
+  },
   "firestore": {
     "database": "catalogo",
     "edition": "enterprise",

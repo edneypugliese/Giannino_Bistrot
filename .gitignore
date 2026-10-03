@@ -8,6 +8,7 @@ reference/
 reference.html
 /favicon.svg
 dist/
+public/assets/firebase-client.js
 # Checkout vazio preexistente; não incorporar outro repositório neste projeto.
 Giannino_Bistrot/
 .secrets/

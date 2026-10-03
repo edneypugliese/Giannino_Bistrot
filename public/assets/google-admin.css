@@ -1,0 +1,10 @@
+.ga-main{min-height:calc(100vh - 100px);display:flex;justify-content:center;align-items:flex-start;padding:126px 20px 60px;font-family:var(--font-sans,sans-serif)}
+.ga-card{width:432px;max-width:100%;border:1px solid var(--color-border,#ddd4ca);padding:34px 36px 36px;background:var(--color-card,#fdfaf6);text-align:center}
+.ga-title{font-family:var(--font-serif,serif);font-size:32px;font-weight:400;line-height:1.2;margin:0 0 12px;color:var(--color-foreground,#241a14)}
+.ga-subtitle{font-size:13px;letter-spacing:3px;font-weight:300;margin:0 0 32px}
+.ga-description{font-size:15px;font-weight:300;line-height:1.6;margin:0 0 28px}
+.ga-google{display:flex;gap:12px;align-items:center;justify-content:center;width:100%;border:1px solid var(--color-border,#ddd4ca);min-height:46px;background:#fff;color:#241a14;font-size:13px;letter-spacing:1.5px;cursor:pointer;padding:12px}
+.ga-google:hover{background:#f6f1eb}.ga-google:disabled{opacity:.65;cursor:wait}.ga-google:focus-visible,.ga-back:focus-visible{outline:2px solid #604326;outline-offset:4px}
+.ga-error{margin:20px 0 0;font-size:14px;line-height:1.5;color:#9d2922}
+.ga-back{display:inline-block;margin-top:28px;font-size:14px;font-weight:300}
+@media(max-width:600px){.ga-main{padding-top:70px}.ga-card{padding:32px 24px}.ga-title{font-size:30px}}

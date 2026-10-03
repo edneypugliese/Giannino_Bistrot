@@ -1,16 +1,105 @@
 rules_version = '2';
 
-// sections/{section_key}: metadados e ordenação dos quatro catálogos.
-// categories/{id}: nome, descrição, seção, hierarquia e visibilidade.
-// products/{id}: nome, descrição, categoria, seção, preço, moeda,
-//                ordenação, visibilidade e disponibilidade.
-// _imports/{sha256}: versão do esquema e resumo da importação.
-// A administração ocorre pelo Console ou scripts com identidade IAM.
-// O site local mantém sua API e autenticação atuais.
+// sections/{section_key}: os quatro catálogos; leitura administrativa.
+// categories/{id}: id, section, name, description?, schedule?, parent_id?,
+//   sort_order, visible, created_at (ISO original/timestamp), updated_at? (timestamp).
+// products/{id}: id, category_id, section, name, description?, price?,
+//   price_cents?, currency EUR, sort_order, visible, available, datas.
+// _catalog/revision: revision inteiro crescente, updated_at timestamp.
+// public_catalogs/{section}: projeção pública {schema_version:1,payload:JSON,updated_at}.
+// _imports e todos os outros caminhos permanecem restritos ao IAM.
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Clientes web/mobile, inclusive usuários do Firebase Auth, não
-    // recebem acesso direto. Bibliotecas de servidor usam permissões IAM.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'edneypugleise@gmail.com'
+        && request.auth.token.email_verified == true
+        && request.auth.token.firebase.sign_in_provider == 'google.com';
+    }
+    function validId(id) {
+      return id is string && id.matches('^[a-zA-Z0-9_-]{1,128}$');
+    }
+    function nullableText(value, max) {
+      return value == null || (value is string && value.size() <= max);
+    }
+    function validDate(value) {
+      return value is timestamp || (value is string && value.size() <= 64
+        && value.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]+(Z|[+]00:00)$'));
+    }
+    function baseFields(d, id) {
+      return validId(id) && d.id == id
+        && d.name is string && d.name.size() > 0 && d.name.size() <= 200
+        && d.section in ['menu', 'caffetteria', 'drink', 'vini']
+        && nullableText(d.description, 4000)
+        && d.sort_order is int && d.sort_order >= 0 && d.sort_order <= 1000000
+        && d.visible is bool && validDate(d.created_at)
+        && d.updated_at is timestamp && d.updated_at == request.time;
+    }
+    function revisionAdvanced() {
+      let path = /databases/$(database)/documents/_catalog/revision;
+      return getAfter(path).data.revision == (exists(path) ? get(path).data.revision + 1 : 1);
+    }
+    function isValidCategory(d, id) {
+      let parent = d.parent_id;
+      return d.keys().hasAll(['id', 'section', 'name', 'description', 'schedule', 'parent_id', 'sort_order', 'visible', 'created_at', 'updated_at'])
+        && d.keys().hasOnly(['id', 'section', 'name', 'description', 'schedule', 'parent_id', 'sort_order', 'visible', 'created_at', 'updated_at', 'source_parent_id'])
+        && baseFields(d, id) && nullableText(d.schedule, 200)
+        && nullableText(d.get('source_parent_id', null), 128)
+        && exists(/databases/$(database)/documents/sections/$(d.section))
+        && (parent == null || (validId(parent) && parent != id
+          && getAfter(/databases/$(database)/documents/categories/$(parent)).data.section == d.section));
+    }
+    function isValidProduct(d, id) {
+      return d.keys().hasAll(['id', 'category_id', 'section', 'name', 'description', 'price', 'price_cents', 'currency', 'sort_order', 'visible', 'available', 'created_at', 'updated_at'])
+        && d.keys().hasOnly(['id', 'category_id', 'section', 'name', 'description', 'price', 'price_cents', 'currency', 'sort_order', 'visible', 'available', 'created_at', 'updated_at'])
+        && baseFields(d, id) && validId(d.category_id)
+        && getAfter(/databases/$(database)/documents/categories/$(d.category_id)).data.section == d.section
+        && nullableText(d.price, 100) && d.currency == 'EUR' && d.available is bool
+        && (d.price_cents == null || (d.price_cents is int && d.price_cents >= 0 && d.price_cents <= 9007199254740991));
+    }
+    function isValidRevision(d) {
+      return d.keys().hasAll(['revision', 'updated_at']) && d.keys().hasOnly(['revision', 'updated_at'])
+        && d.revision is int && d.revision >= 1 && d.revision <= 9007199254740991
+        && d.updated_at is timestamp && d.updated_at == request.time;
+    }
+    function isPublicSection(id) {
+      return id in ['menu', 'caffetteria', 'drink', 'vini'];
+    }
+    function isValidPublicCatalog(d) {
+      return d.keys().hasAll(['schema_version', 'payload', 'updated_at'])
+        && d.keys().hasOnly(['schema_version', 'payload', 'updated_at'])
+        && d.schema_version == 1 && d.payload is string && d.payload.size() <= 500000
+        && d.updated_at is timestamp && d.updated_at == request.time;
+    }
+    match /sections/{id} {
+      allow read: if isAdmin();
+    }
+    match /categories/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && isValidCategory(request.resource.data, id) && revisionAdvanced();
+      allow update: if isAdmin() && isValidCategory(request.resource.data, id)
+        && request.resource.data.created_at == resource.data.created_at
+        && request.resource.data.section == resource.data.section && revisionAdvanced();
+      allow delete: if isAdmin() && revisionAdvanced();
+    }
+    match /products/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && isValidProduct(request.resource.data, id) && revisionAdvanced();
+      allow update: if isAdmin() && isValidProduct(request.resource.data, id)
+        && request.resource.data.created_at == resource.data.created_at && revisionAdvanced();
+      allow delete: if isAdmin() && revisionAdvanced();
+    }
+    match /_catalog/revision {
+      allow get: if isAdmin();
+      allow create: if isAdmin() && isValidRevision(request.resource.data) && request.resource.data.revision == 1;
+      allow update: if isAdmin() && isValidRevision(request.resource.data)
+        && request.resource.data.revision == resource.data.revision + 1;
+    }
+    match /public_catalogs/{section} {
+      allow get: if isPublicSection(section);
+      allow create, update: if isAdmin() && isPublicSection(section)
+        && isValidPublicCatalog(request.resource.data) && revisionAdvanced();
+    }
     match /{document=**} {
       allow read, write: if false;
     }

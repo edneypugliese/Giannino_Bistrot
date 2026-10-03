@@ -7,19 +7,24 @@ import { OAuth2Client } from "google-auth-library";
 
 const { Firestore, v1 } = firestore;
 
+export function cliAuthClient() {
+  const require = createRequire(import.meta.url);
+  const { getProjectDefaultAccount } = require("firebase-tools/lib/auth.js");
+  const api = require("firebase-tools/lib/api.js");
+  const account = getProjectDefaultAccount(resolve(fileURLToPath(new URL("../", import.meta.url))));
+  if (!account?.tokens?.refresh_token) throw new Error("Entre no Firebase com npx -y firebase-tools@latest login antes de importar.");
+  const client = new OAuth2Client(api.clientId(), api.clientSecret());
+  client.setCredentials({ refresh_token: account.tokens.refresh_token });
+  return client;
+}
+
 export async function connectCatalog(auth = "cli") {
   const config = JSON.parse(readFileSync(new URL("../firebase.json", import.meta.url), "utf8")).firestore;
   const project = JSON.parse(readFileSync(new URL("../.firebaserc", import.meta.url), "utf8")).projects.default;
   if (process.env.FIRESTORE_EMULATOR_HOST) throw new Error("Remova FIRESTORE_EMULATOR_HOST para operar no banco remoto.");
   let authClient;
   if (auth === "cli") {
-    const require = createRequire(import.meta.url);
-    const { getProjectDefaultAccount } = require("firebase-tools/lib/auth.js");
-    const api = require("firebase-tools/lib/api.js");
-    const account = getProjectDefaultAccount(resolve(fileURLToPath(new URL("../", import.meta.url))));
-    if (!account?.tokens?.refresh_token) throw new Error("Entre no Firebase com npx -y firebase-tools@latest login antes de importar.");
-    authClient = new OAuth2Client(api.clientId(), api.clientSecret());
-    authClient.setCredentials({ refresh_token: account.tokens.refresh_token });
+    authClient = cliAuthClient();
   } else if (auth !== "adc") {
     throw new Error("Use --auth cli ou --auth adc.");
   }
