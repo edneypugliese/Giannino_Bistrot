@@ -1,10 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runInNewContext } from "node:vm";
-import { buildPages, normalizeBasePath } from "../scripts/build-pages.mjs";
+import { buildPages, normalizeBasePath, versionAssets } from "../scripts/build-pages.mjs";
 
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), "giannino-pages-"));
@@ -30,7 +30,11 @@ test("o Pages preserva o snapshot público, com links diretos e recursos no subd
 
   await buildPages({ basePath: "/Giannino_Bistrot/", outDir });
   const html = await readFile(join(outDir, "index.html"), "utf8");
-  assert.match(html, /src="\/Giannino_Bistrot\/assets\/app.js"/);
+  assert.match(html, /src="\/Giannino_Bistrot\/assets\/app\.[a-f0-9]{12}\.js"/);
+  const entry = html.match(/src="(\/Giannino_Bistrot\/assets\/app\.[a-f0-9]{12}\.js)"/)[1];
+  const entryScript = await readFile(join(outDir, entry.slice("/Giannino_Bistrot/".length)), "utf8");
+  assert.match(entryScript, /from "\.\/google-admin\.[a-f0-9]{12}\.js"/);
+  assert.match(entryScript, /to:"\/admin\/login","aria-label":"Area riservata"/);
   assert.match(html, /href="\/Giannino_Bistrot\/favicon.svg"/);
   for (const route of result.routes) assert.equal(await readFile(join(outDir, route.slice(1), "index.html"), "utf8"), html);
   assert.equal(await readFile(join(outDir, "404.html"), "utf8"), html);
@@ -54,6 +58,32 @@ test("o Pages preserva o snapshot público, com links diretos e recursos no subd
   assert.ok(!/src\/pages\/AdminLogin\.tsx|src\/contexts\/AuthContext\.tsx|localAuthClient|\/api\/auth/.test(app));
   const runtime = await readFile(join(outDir, "assets/pages-runtime.js"), "utf8");
   assert.ok(!runtime.includes("localhost") && !runtime.includes("versione locale"));
+});
+
+test("atualizar um módulo invalida o cache da entrada, dos imports e dos estilos", async t => {
+  const { outDir } = await fixture(t);
+  const assets = join(outDir, "assets");
+  await mkdir(assets, { recursive: true });
+  await writeFile(join(assets, "app.js"), 'import {login} from "./login.js"; import("./firebase-client.js"); login();');
+  await writeFile(join(assets, "login.js"), 'export function login(){return "Google";}');
+  await writeFile(join(assets, "firebase-client.js"), 'export const enabled = true;');
+  await writeFile(join(assets, "style.css"), 'header{display:flex}');
+  const html = '<script src="/Giannino_Bistrot/assets/app.js"></script><link href="/Giannino_Bistrot/assets/style.css">';
+  const first = await versionAssets(outDir, html, "/Giannino_Bistrot/");
+  const entry = await readFile(join(assets, first.filenames.get("app.js")), "utf8");
+  assert.ok(first.html.includes(first.filenames.get("app.js")));
+  assert.ok(first.html.includes(first.filenames.get("style.css")));
+  assert.ok(entry.includes('from "./' + first.filenames.get("login.js") + '"'));
+  assert.ok(entry.includes('import("./' + first.filenames.get("firebase-client.js") + '")'));
+  // Um build limpo com as mesmas fontes mantém a URL, sem invalidar à toa.
+  for (const name of first.filenames.values()) await rm(join(assets, name));
+  assert.equal((await versionAssets(outDir, html, "/Giannino_Bistrot/")).version, first.version);
+  for (const name of first.filenames.values()) await rm(join(assets, name));
+  await writeFile(join(assets, "login.js"), 'export function login(){return "Google aggiornato";}');
+  const second = await versionAssets(outDir, html, "/Giannino_Bistrot/");
+  assert.notEqual(second.version, first.version);
+  assert.notEqual(second.filenames.get("app.js"), first.filenames.get("app.js"));
+  assert.notEqual(second.filenames.get("style.css"), first.filenames.get("style.css"));
 });
 
 test("a exportação filtra itens ocultos e indisponíveis e atualiza as páginas personalizadas", async t => {

@@ -16,6 +16,8 @@ O build exporta apenas conteúdos visíveis e produtos disponíveis, ajusta cami
 
 Use `npm ci` antes do build ou dos testes. O build prepara o Firebase Web SDK com esbuild e inclui esse módulo no pacote estático. O servidor de hospedagem é o próprio GitHub Pages.
 
+O build inclui uma versão no nome dos arquivos JavaScript e CSS e atualiza seus imports. Assim, mudanças no frontend carregam os arquivos da nova publicação, incluindo o cadeado de acesso administrativo, sem reutilizar módulos antigos em cache.
+
 ## Atualizar os conteúdos
 
 Edite `data/site.json` para alterar textos, contatos, categorias, produtos, preços, disponibilidade e tema. Adicione imagens em `public/img/` e use caminhos como `/img/foto.jpg` no snapshot. Faça commit e push na `main`; o workflow publica as alterações.

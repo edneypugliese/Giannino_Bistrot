@@ -1,4 +1,5 @@
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildFirebase } from "./build-firebase.mjs";
@@ -27,6 +28,35 @@ function rewriteMedia(value, basePath) {
   if (Array.isArray(value)) return value.map(item => rewriteMedia(item, basePath));
   if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, rewriteMedia(item, basePath)]));
   return value;
+}
+
+// Um módulo alterado também troca o nome da entrada e dos módulos dependentes.
+// Isso evita misturar o frontend antigo em cache com uma publicação nova.
+export async function versionAssets(outDir, html, basePath) {
+  const directory = join(outDir, "assets");
+  const names = (await readdir(directory)).filter(name => /\.(?:js|css)$/.test(name)).sort();
+  const sources = new Map();
+  const hash = createHash("sha256").update(basePath);
+  for (const name of names) {
+    const source = await readFile(join(directory, name), "utf8");
+    sources.set(name, source);
+    hash.update(name).update("\0").update(source).update("\0");
+  }
+  const version = hash.digest("hex").slice(0, 12);
+  const filenames = new Map(names.map(name => [name, name.replace(/\.(js|css)$/, `.${version}.$1`)]));
+  const replaceReferences = source => {
+    for (const [name, filename] of filenames) {
+      source = source.replaceAll(basePath + "assets/" + name, basePath + "assets/" + filename);
+      for (const quote of ['"', "'", "`"]) {
+        source = source.replaceAll(quote + "./" + name + quote, quote + "./" + filename + quote);
+      }
+    }
+    return source;
+  };
+  for (const [name, source] of sources) {
+    await writeFile(join(directory, filenames.get(name)), replaceReferences(source));
+  }
+  return { html: replaceReferences(html), version, filenames };
 }
 
 export function publicResponses(site) {
@@ -71,7 +101,7 @@ export async function buildPages({ basePath = process.env.PAGES_BASE_PATH || "/G
   }
   app = app.replace(/(["'`])(\/(?:img|fonts|assets)\/[^"'`]*|\/favicon\.svg)\1/g,
     (_, quote, path) => quote + assetPath(path, basePath) + quote);
-  const html = (await readFile(join(ROOT, "public/index.html"), "utf8"))
+  let html = (await readFile(join(ROOT, "public/index.html"), "utf8"))
     .replace(/((?:src|href)=")\//g, "$1" + basePath);
   const routes = new Set(["/", "/menu", "/caffetteria", "/drink", "/vini", "/contatti", "/admin", "/admin/login", ...responses.pages.map(row => row.route)]);
   for (const route of routes) {
@@ -86,6 +116,8 @@ export async function buildPages({ basePath = process.env.PAGES_BASE_PATH || "/G
     css = css.replace(/url\((["']?)(\/[^)]*?)\1\)/g, (_, quote, path) => "url(" + quote + assetPath(path, basePath) + quote + ")");
     await writeFile(join(outDir, "assets", name), css);
   }
+  const assets = await versionAssets(outDir, html, basePath);
+  html = assets.html;
   await mkdir(join(outDir, "api"), { recursive: true });
   for (const [name, value] of Object.entries(responses)) {
     await writeFile(join(outDir, "api", name + ".json"), JSON.stringify(rewriteMedia(value, basePath)) + "\n");
@@ -98,7 +130,7 @@ export async function buildPages({ basePath = process.env.PAGES_BASE_PATH || "/G
   await writeFile(join(outDir, "404.html"), html);
   await writeFile(join(outDir, ".nojekyll"), "");
   const products = Object.entries(responses).filter(([key]) => key.startsWith("catalog-")).reduce((total, [, value]) => total + value.products.length, 0);
-  return { outDir, basePath, routes: [...routes], products };
+  return { outDir, basePath, routes: [...routes], products, assetVersion: assets.version };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
