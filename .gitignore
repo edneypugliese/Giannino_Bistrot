@@ -1,0 +1,11 @@
+node_modules/
+.local/
+coverage/
+__pycache__/
+*.pyc
+*.log
+reference/
+reference.html
+favicon.svg
+# Checkout vazio preexistente; não incorporar outro repositório neste projeto.
+Giannino_Bistrot/

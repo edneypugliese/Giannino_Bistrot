@@ -1,0 +1,15 @@
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ttf binary
+*.woff binary
+*.woff2 binary
+# Preservar os bytes dos downloads originais e evitar diffs do bundle compilado.
+vendor/** -text -diff
+docs/font-licenses/** -text -diff
+public/favicon.svg -text
+public/assets/app.js -diff
