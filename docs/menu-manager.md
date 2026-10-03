@@ -7,10 +7,15 @@ indisponíveis. O tema e as fontes são os mesmos do site público.
 
 ## Uso
 
-- **Prodotti**: buscar por nome, descrição, categoria ou ID; filtrar por seção,
-  categoria e estado; adicionar, editar ou excluir produtos.
-- **Categorie**: adicionar, editar ou excluir categorias e subcategorias.
-- **Sezioni**: consultar todos os campos das quatro seções do banco.
+- As abas **Menù**, **Caffetteria**, **Drink List** e **Carta dei Vini** mostram
+  os itens da seção selecionada. Ao trocar de aba, a busca é limpa e a lista
+  retorna à primeira página de produtos.
+- O único filtro é a busca por nome, descrição, categoria ou ID, sempre dentro
+  da aba selecionada.
+- **Prodotti** e **Categorie** alternam entre produtos e categorias da aba;
+  ambas as listas permitem adicionar, editar ou excluir registros.
+- **Tutti i dati della sezione** permite consultar todos os campos da seção
+  selecionada. As abas também podem ser percorridas pelas setas do teclado.
 - O formulário permite mudar nome, descrição, categoria, preço, ordenação,
   visibilidade e disponibilidade. Nas categorias, permite mudar também a
   descrição, o horário e a categoria superior.
