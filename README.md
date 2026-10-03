@@ -47,6 +47,16 @@ O site publicado fornece os arquivos compilados; seu código-fonte TSX original 
 
 `python scripts/download_reference.py` refaz o download dos recursos públicos e atualiza o snapshot inicial. **Não altera suas edições em .local/**. Revise as diferenças antes de incorporar uma nova versão da referência.
 
+## Firebase
+
+O Firestore do projeto **giannino-bistrot**, banco **catalogo**, em Milão,
+armazena as 4 seções, 63 categorias e 282 produtos com descrições, preços em
+euros, ordenação, visibilidade e disponibilidade. Consulte a
+[documentação do banco e das ferramentas de importação](docs/firebase.md).
+O servidor local continua usando seu arquivo de dados; o banco pode ser
+administrado pelo Console Firebase. As ferramentas opcionais de migração
+precisam de `npm ci`.
+
 ## Verificação
 
 `npm run check` verifica a sintaxe. `npm test` testa os catálogos, recursos locais, controle de acesso, gravação persistente, CRUD, visibilidade, ordenação e uploads, usando uma pasta temporária independente dos seus dados.

@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// sections/{section_key}: metadados e ordenação dos quatro catálogos.
+// categories/{id}: nome, descrição, seção, hierarquia e visibilidade.
+// products/{id}: nome, descrição, categoria, seção, preço, moeda,
+//                ordenação, visibilidade e disponibilidade.
+// _imports/{sha256}: versão do esquema e resumo da importação.
+// A administração ocorre pelo Console ou scripts com identidade IAM.
+// O site local mantém sua API e autenticação atuais.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Clientes web/mobile, inclusive usuários do Firebase Auth, não
+    // recebem acesso direto. Bibliotecas de servidor usam permissões IAM.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
