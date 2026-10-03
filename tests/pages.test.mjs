@@ -3,10 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { once } from "node:events";
 import { runInNewContext } from "node:vm";
 import { buildPages, normalizeBasePath } from "../scripts/build-pages.mjs";
-import { createSiteServer } from "../server/index.mjs";
 
 async function fixture(t) {
   const directory = await mkdtemp(join(tmpdir(), "giannino-pages-"));
@@ -14,20 +12,20 @@ async function fixture(t) {
   return { directory, outDir: join(directory, "dist") };
 }
 
-test("o Pages exporta as mesmas respostas públicas do servidor, com links diretos e recursos no subdiretório", async t => {
-  const { directory, outDir } = await fixture(t);
-  const { server } = createSiteServer({ dataDir: join(directory, "local"), quiet: true });
-  server.listen(0, "127.0.0.1");
-  await once(server, "listening");
-  t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
-  const origin = `http://127.0.0.1:${server.address().port}`;
+test("o Pages preserva o snapshot público, com links diretos e recursos no subdiretório", async t => {
+  const { outDir } = await fixture(t);
+  const site = JSON.parse(await readFile(new URL("../data/site.json", import.meta.url), "utf8"));
   const result = await buildPages({ basePath: "/", outDir });
   assert.equal(result.products, 282);
-  for (const name of ["home", "theme", "pages", "contact", "catalog-menu", "catalog-caffetteria", "catalog-drink", "catalog-vini"]) {
-    const endpoint = name.startsWith("catalog-") ? "/api/catalog?section=" + name.slice(8) : "/api/" + name;
-    const local = await (await fetch(origin + endpoint)).json();
+  for (const name of ["home", "theme", "pages", "contact"]) {
     const exported = JSON.parse(await readFile(join(outDir, "api", name + ".json"), "utf8"));
-    assert.deepEqual(exported, local, endpoint);
+    assert.deepEqual(exported, site[name], name);
+  }
+  for (const [section, categories, products] of [["menu", 5, 24], ["caffetteria", 1, 20], ["drink", 19, 119], ["vini", 38, 119]]) {
+    const catalog = JSON.parse(await readFile(join(outDir, "api", "catalog-" + section + ".json"), "utf8"));
+    assert.equal(catalog.categories.length, categories);
+    assert.equal(catalog.products.length, products);
+    for (const product of catalog.products) assert.deepEqual(product, site.products.find(row => row.id === product.id));
   }
 
   await buildPages({ basePath: "/Giannino_Bistrot/", outDir });
@@ -52,8 +50,10 @@ test("o Pages exporta as mesmas respostas públicas do servidor, com links diret
   assert.match(app, /"\/Giannino_Bistrot\/assets\/fonts.css\?"/);
   const files = await readdir(outDir);
   for (const privatePath of [".local", "server", "data", "admin.json", "ACESSO-LOCAL.txt", "site.json"]) assert.ok(!files.includes(privatePath));
-  const auth = await readFile(join(outDir, "assets/local-auth.js"), "utf8");
-  assert.ok(!auth.includes("fetch("));
+  await assert.rejects(stat(join(outDir, "assets/local-auth.js")), { code: "ENOENT" });
+  assert.ok(!/src\/pages\/AdminLogin\.tsx|src\/contexts\/AuthContext\.tsx|localAuthClient|\/api\/auth/.test(app));
+  const runtime = await readFile(join(outDir, "assets/pages-runtime.js"), "utf8");
+  assert.ok(!runtime.includes("localhost") && !runtime.includes("versione locale"));
 });
 
 test("a exportação filtra itens ocultos e indisponíveis e atualiza as páginas personalizadas", async t => {
@@ -86,7 +86,7 @@ test("a exportação filtra itens ocultos e indisponíveis e atualiza as página
 
 test("o adaptador usa arquivos JSON, preserva chamadas externas e bloqueia gravações", async () => {
   const calls = [];
-  const source = (await readFile(new URL("../scripts/pages-runtime.js", import.meta.url), "utf8"))
+  const source = (await readFile(new URL("../public/assets/pages-runtime.js", import.meta.url), "utf8"))
     .replace(/export /g, "").replace(/import\.meta\.url/g, '"https://example.test/Giannino_Bistrot/assets/pages-runtime.js"');
   const runtime = runInNewContext(source + "\n({ pagesFetch, pagesBasePath })", {
     URL, Request, Response,

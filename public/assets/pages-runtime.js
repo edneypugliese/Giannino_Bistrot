@@ -1,4 +1,4 @@
-// O bundle original usa /api; no Pages, cada resposta é um arquivo público.
+// O bundle usa /api; no GitHub Pages, cada resposta é um arquivo público.
 const nativeFetch = globalThis.fetch.bind(globalThis);
 export const pagesBasePath = new URL("../", import.meta.url).pathname.replace(/\/$/, "") || "/";
 
@@ -18,7 +18,7 @@ export async function pagesFetch(input, options = {}) {
 
   const method = (options.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
   if (method !== "GET" || url.searchParams.get("includeHidden") === "1") {
-    return jsonResponse(405, "La gestione dei contenuti è disponibile nella versione locale del sito.");
+    return jsonResponse(405, "Metodo non consentito.");
   }
   let file;
   if (["home", "theme", "pages", "contact"].includes(endpoint)) file = endpoint;

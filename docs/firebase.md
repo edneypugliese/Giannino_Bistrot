@@ -47,7 +47,7 @@ preservados em `price`, com `price_cents: null`.
 O snapshot possui duas categorias (`Acque Minerali` e `Bibite`) que apontam
 para uma categoria superior ausente. No Firestore, recebem `parent_id: null`
 para manter a hierarquia íntegra, e `source_parent_id` guarda a referência
-original. O arquivo local e todos os produtos dessas categorias são preservados.
+original. O snapshot versionado e todos os produtos dessas categorias são preservados.
 
 ## Migração e verificação
 
@@ -61,8 +61,8 @@ npm run firebase:import
 npm run firebase:verify
 ```
 
-Por padrão, a fonte é `.local/site.json`, caso exista, para incluir edições do
-painel. Caso contrário, usa `data/site.json`. Para escolher outra fonte:
+Por padrão, a fonte é `data/site.json`, o mesmo snapshot utilizado na
+publicação do GitHub Pages. Para escolher outra fonte:
 
 ```powershell
 npm run firebase:plan -- --source data/site.json
@@ -107,14 +107,12 @@ npx -y firebase-tools@latest deploy --only firestore --project giannino-bistrot 
 npx -y firebase-tools@latest deploy --only firestore --project giannino-bistrot
 ```
 
-O servidor e o painel local continuam usando `.local/site.json`. Esta entrega
-cria e preenche o banco remoto e fornece ferramentas de migração e conferência;
-uma sincronização permanente entre o painel e o Firestore requer uma camada
-de persistência no servidor. Não é necessário registrar um aplicativo web para
-administrar este banco pelo Console ou pelas ferramentas de servidor.
+O site é hospedado exclusivamente no GitHub Pages e lê os JSON gerados a
+partir de `data/site.json`. O banco remoto e as ferramentas de migração são
+independentes dessa publicação. Alterações no Console Firebase não atualizam
+automaticamente o snapshot nem o site. Não é necessário registrar um aplicativo
+web para administrar este banco pelo Console ou pelas ferramentas de migração.
 
-As dependências Firebase são ferramentas de desenvolvimento; `npm start`
-continua funcionando com as bibliotecas nativas do Node.js. A auditoria do npm
-na instalação identificou 11 avisos nas dependências transitivas da CLI
-Firebase 15.32.1. Elas não são carregadas pelo servidor HTTP local; a auditoria
-de dependências de produção não identificou vulnerabilidades.
+As dependências Firebase são ferramentas de desenvolvimento e não são
+incluídas no pacote do site. O build e os testes da publicação usam bibliotecas
+nativas do Node.js.

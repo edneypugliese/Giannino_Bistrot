@@ -1,76 +1,62 @@
-# Giannino Bistrot Cafè — cópia local
+# Giannino Bistrot Cafè
 
-Clone do [site de referência](https://wrg41y-n2xaqy6l5-arcedawebapps1.vercel.app/), com o frontend público original, imagens, ícones, fontes e snapshot dos conteúdos. O servidor Node.js replica as APIs e a autenticação para uso neste computador. Não precisa de npm install, Supabase ou conexão com o site original para exibir os conteúdos.
+Site público disponível exclusivamente no [GitHub Pages](https://edneypugliese.github.io/Giannino_Bistrot/), com a aparência e os conteúdos públicos do [site de referência](https://wrg41y-n2xaqy6l5-arcedawebapps1.vercel.app/).
 
-## GitHub Pages
+Para acessar, abra o link acima ou dê dois cliques em **abrir-site.cmd**. O atalho abre o endereço online no navegador. O projeto não possui servidor, painel, autenticação nem serviço de uploads locais.
 
-O site público está preparado para **https://edneypugliese.github.io/Giannino_Bistrot/**. O workflow `.github/workflows/pages.yml` testa, gera e publica o site automaticamente a cada push na branch `main`. Em **Settings → Pages → Build and deployment**, a fonte deve ser **GitHub Actions**, conforme a [documentação do GitHub](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages); essa configuração já está habilitada neste repositório.
+## Publicação
 
-`npm run build:pages` gera a pasta `dist/`, usando o conteúdo versionado de `data/site.json`. O build exporta apenas as respostas públicas, ajusta caminhos de imagens e fontes e cria entradas para Home, Menù, Caffetteria, Drink List, Carta dei Vini, Contatti e páginas personalizadas visíveis. Assim, os links diretos e a atualização do navegador funcionam no subdiretório do repositório. A página `404.html` mantém a tela de página não encontrada do site.
+O workflow `.github/workflows/pages.yml` verifica a sintaxe, executa os testes, gera os arquivos estáticos e publica automaticamente a cada push na branch `main`. A fonte em **Settings → Pages → Build and deployment** é **GitHub Actions**.
 
-O GitHub Pages hospeda arquivos estáticos e não executa o servidor Node.js. **O painel administrativo, login, uploads e gravação de alterações continuam disponíveis somente na versão local**; o botão de administração fica oculto na versão pública. Firebase e credenciais locais não são necessários para exibir o site publicado.
+`npm run build:pages` gera a pasta `dist/` a partir de `public/` e do conteúdo versionado de `data/site.json`. Esse comando prepara o pacote de publicação; não inicia um servidor. O caminho padrão é `/Giannino_Bistrot/`. No workflow, o caminho é obtido da configuração do Pages. Para publicar na raiz de um domínio, use `node scripts/build-pages.mjs --base-path /`.
 
-Para atualizar os conteúdos publicados, altere `data/site.json`, faça commit e push na `main`. Edições feitas pelo painel em `.local/site.json` precisam ser incorporadas ao snapshot versionado antes da publicação. Imagens de uploads locais devem ser copiadas para `public/uploads/` quando forem utilizadas no snapshot. A pasta `.local/` nunca é incluída no build.
+O build exporta apenas conteúdos visíveis e produtos disponíveis, ajusta caminhos de imagens e fontes e cria entradas para os links diretos de Home, Menù, Caffetteria, Drink List, Carta dei Vini, Contatti e páginas personalizadas. As entradas `/admin` e `/admin/login` estão reservadas à integração da administração online com Firebase. Rotas inexistentes exibem a página de conteúdo não encontrado.
 
-O caminho padrão do build é `/Giannino_Bistrot/`. Para hospedar na raiz de um domínio, use `node scripts/build-pages.mjs --base-path /`. No workflow, o caminho é obtido automaticamente da configuração do Pages. O build requer Node.js 20 ou superior e usa apenas bibliotecas nativas, sem precisar de `npm install`.
+O build e os testes usam apenas bibliotecas nativas do Node.js 20 ou superior, sem precisar de `npm install`. O servidor de hospedagem é o próprio GitHub Pages.
 
-## Abrir no Windows
+## Atualizar os conteúdos
 
-1. Dê dois cliques em **iniciar-site.cmd** nesta pasta, ou execute `npm start` no terminal.
-2. Abra **http://localhost:3000**.
-3. Deixe o terminal aberto enquanto utiliza o site. `Ctrl+C` encerra o servidor.
+Edite `data/site.json` para alterar textos, contatos, categorias, produtos, preços, disponibilidade e tema. Adicione imagens em `public/img/` e use caminhos como `/img/foto.jpg` no snapshot. Faça commit e push na `main`; o workflow publica as alterações.
 
-Requer Node.js 20 ou superior, já instalado neste computador. Para outra porta, execute `$env:PORT=3001; npm start` no PowerShell.
-
-## Painel administrativo
-
-Acesse **http://localhost:3000/admin/login**. O usuário inicial é **admin**; a senha é gerada no primeiro uso e fica em **.local/ACESSO-LOCAL.txt**. As credenciais originais do site não são utilizadas.
-
-O painel original permite editar home, imagens, eventos, páginas, categorias, produtos, preços, disponibilidade, contatos e design. O backend grava alterações em **.local/site.json** e imagens enviadas em **.local/uploads/**. Essa pasta é privada ao checkout e ignorada pelo Git. Faça uma cópia dela para guardar suas edições. Reiniciar o servidor preserva os dados e exige novo login.
-
-Para definir sua própria senha na próxima inicialização, use `$env:LOCAL_ADMIN_PASSWORD='sua-senha'; npm start`. O servidor escuta somente em `127.0.0.1`; esta implementação é destinada ao uso local.
+Arquivos e credenciais da antiga versão local não são utilizados pela publicação. Firebase também não é necessário para exibir o site.
 
 ## Conteúdo preservado
 
 - Home e história completas, assinatura, logo e fotografia da sala.
 - Menù, Caffetteria, Drink List e Carta dei Vini: **63 categorias e 282 produtos** com descrições e preços originais.
-- Página de contatos, navegação, índices de categorias e interface administrativa.
-- **23 famílias de fontes** disponíveis no editor, baixadas para uso offline.
+- Contatos, navegação e índices de categorias.
+- **23 famílias de fontes**, hospedadas junto com o site.
 
-O mapa incorporado do Google Maps, Instagram e links externos ainda precisam de internet. O restante dos arquivos e dos dados iniciais é servido pelo computador. Não foram copiados dados privados, senhas nem o banco remoto. Os scripts de gravação de sessões e de edição da plataforma de referência foram removidos do HTML local.
+O Google Maps incorporado, Instagram e os links de telefone e email continuam disponíveis. Os scripts de gravação de sessões e edição da plataforma de referência foram removidos.
 
-## Estrutura e edição
+## Estrutura
 
 | Pasta/arquivo | Conteúdo |
 | --- | --- |
-| `public/index.html` | Entrada HTML sem scripts da plataforma externa |
-| `public/assets/app.js` | Frontend compilado original com autenticação e fontes locais |
-| `public/assets/local-auth.js` | Adaptador de sessão para o servidor local |
-| `public/assets/style.css` e `fonts.css` | Estilos originais e fontes locais |
-| `public/img/` e `public/fonts/` | Imagens e arquivos de fontes baixados |
-| `server/index.mjs` | APIs, sessão administrativa, uploads e servidor HTTP |
-| `data/site.json` | Snapshot inicial dos dados públicos |
-| `vendor/` | JavaScript, CSS e respostas públicas originais para rastreabilidade |
-| `docs/download-manifest.json` | Origem, tamanho e SHA-256 de cada arquivo baixado |
-| `docs/font-licenses/` | Licenças OFL das famílias de fontes baixadas |
-| `scripts/download_reference.py` | Download reproduzível e aplicação das adaptações locais |
+| `public/index.html` | Entrada HTML do site |
+| `public/assets/app.js` | Frontend compilado, sem dependências do servidor e da administração locais |
+| `public/assets/pages-runtime.js` | Leitura dos arquivos JSON publicados no Pages |
+| `public/assets/style.css` e `fonts.css` | Estilos e fontes |
+| `public/img/` e `public/fonts/` | Imagens e arquivos de fontes |
+| `data/site.json` | Conteúdos utilizados na publicação |
+| `scripts/build-pages.mjs` | Geração do pacote estático `dist/` |
+| `scripts/prepare-public-app.mjs` | Remoção reproduzível da administração do bundle de referência |
+| `scripts/download_reference.py` | Atualização dos recursos públicos e do snapshot |
+| `.github/workflows/pages.yml` | Testes, build e publicação automática |
+| `vendor/` | Arquivos originais para rastreabilidade |
+| `docs/download-manifest.json` | Origem, tamanho e SHA-256 dos recursos baixados |
+| `docs/font-licenses/` | Licenças das fontes |
 
-O site publicado fornece os arquivos compilados; seu código-fonte TSX original não está disponível. O frontend baixado foi preservado para manter a fidelidade. Conteúdos e aparência podem ser editados pelo painel; o servidor e o adaptador local possuem código-fonte legível.
+O código-fonte TSX original não está disponível. A preparação do frontend remove o antigo SDK de autenticação e as telas que dependiam da administração local, mantendo os componentes públicos e permitindo as integrações online. `npm run frontend:prepare` refaz essa adaptação a partir de `vendor/original-app.js`.
 
-`python scripts/download_reference.py` refaz o download dos recursos públicos e atualiza o snapshot inicial. **Não altera suas edições em .local/**. Revise as diferenças antes de incorporar uma nova versão da referência.
+`python scripts/download_reference.py` refaz o download dos recursos públicos e aplica a mesma adaptação. Esse comando também atualiza `data/site.json`; revise as diferenças antes de publicar.
 
 ## Firebase
 
-O Firestore do projeto **giannino-bistrot**, banco **catalogo**, em Milão,
-armazena as 4 seções, 63 categorias e 282 produtos com descrições, preços em
-euros, ordenação, visibilidade e disponibilidade. Consulte a
-[documentação do banco e das ferramentas de importação](docs/firebase.md).
-O servidor local continua usando seu arquivo de dados; o banco pode ser
-administrado pelo Console Firebase. As ferramentas opcionais de migração
-precisam de `npm ci`.
+O Firestore do projeto **giannino-bistrot**, banco **catalogo**, possui uma cópia dos catálogos. Consulte a [documentação das ferramentas de importação](docs/firebase.md). A publicação no Pages usa `data/site.json`; alterações feitas no Console Firebase não são sincronizadas automaticamente com o site. As ferramentas opcionais de migração precisam de `npm ci`.
 
 ## Verificação
 
-`npm run check` verifica a sintaxe. `npm test` testa os catálogos, recursos locais, controle de acesso, gravação persistente, CRUD, visibilidade, ordenação e uploads, usando uma pasta temporária independente dos seus dados.
+`npm run check` verifica a sintaxe. `npm test` verifica os recursos baixados, os catálogos, o frontend online, o build, os caminhos de mídia, os links diretos, a visibilidade e a remoção das dependências da administração local, sem abrir um servidor local.
 
-Para comparar a aparência com o original, use **Ctrl+0 nas duas janelas do navegador** e mantenha a mesma largura. O Chrome pode salvar um zoom diferente para `localhost`, alterando o tamanho dos textos e o ponto em que o mapa passa para a segunda coluna. A [verificação de fidelidade visual](docs/fidelidade-visual.md) registra as medidas conferidas em condições iguais.
+A [verificação de fidelidade visual](docs/fidelidade-visual.md) registra as medidas comparadas com o site de referência.

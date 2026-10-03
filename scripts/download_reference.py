@@ -1,4 +1,4 @@
-"""Atualiza os arquivos públicos e o snapshot original (não altera .local/).
+"""Atualiza os arquivos públicos e o snapshot do site publicado no GitHub Pages.
 
 Executar com Python 3: python scripts/download_reference.py
 """
@@ -8,6 +8,7 @@ from hashlib import sha256
 from pathlib import Path
 import json
 import re
+import subprocess
 import urllib.request
 from urllib.parse import urlparse
 
@@ -98,11 +99,7 @@ def main():
     styles = re.sub(r'@import"https://fonts.googleapis.com/[^";]+";', "", styles)
     (ROOT / "public/assets/style.css").write_text(styles, encoding="utf8", newline="\n")
 
-    original, count = re.subn(r'const Kr=jS\("https://[^" ]+","[^" ]+",\{auth:\{persistSession:!0,autoRefreshToken:!0\}\}\)', "const Kr=localAuthClient", original)
-    if count != 1:
-        raise RuntimeError("A interface de autenticação original mudou; revisar adaptação antes de atualizar.")
-    original = original.replace('"https://fonts.googleapis.com/css2?"', '"/assets/fonts.css?"')
-    (ROOT / "public/assets/app.js").write_text('import { localAuthClient } from "./local-auth.js";\n' + original, encoding="utf8", newline="\n")
+    subprocess.run(["node", str(ROOT / "scripts/prepare-public-app.mjs")], cwd=ROOT, check=True)
     report = {"source": BASE, "downloaded_at": datetime.now(timezone.utc).isoformat(), "files": sorted(manifest, key=lambda x: x["file"])}
     (ROOT / "docs/download-manifest.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf8", newline="\n")
     print(f"Arquivos baixados: {len(manifest)}; fontes: {len(families)}; categorias: {len(site['categories'])}; produtos: {len(site['products'])}.")

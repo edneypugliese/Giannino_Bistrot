@@ -64,15 +64,14 @@ export async function buildPages({ basePath = process.env.PAGES_BASE_PATH || "/G
   site ||= JSON.parse(await readFile(join(ROOT, "data/site.json"), "utf8"));
   const responses = publicResponses(site);
   let app = await readFile(join(ROOT, "public/assets/app.js"), "utf8");
-  const router = "u.jsx(_b,{";
-  if (app.split(router).length !== 2) throw new Error("O router do frontend mudou; revise o adaptador do Pages.");
-  app = 'import { pagesFetch as fetch, pagesBasePath } from "./pages-runtime.js";\n' +
-    app.replace(router, router + "basename:pagesBasePath,")
-      .replace(/(["'`])(\/(?:img|fonts|assets)\/[^"'`]*|\/favicon\.svg)\1/g,
-        (_, quote, path) => quote + assetPath(path, basePath) + quote);
+  if (!app.includes("basename:pagesBasePath") || /local-auth|localAuthClient|\/api\/auth/.test(app)) {
+    throw new Error("Prepare o frontend público com npm run frontend:prepare.");
+  }
+  app = app.replace(/(["'`])(\/(?:img|fonts|assets)\/[^"'`]*|\/favicon\.svg)\1/g,
+    (_, quote, path) => quote + assetPath(path, basePath) + quote);
   const html = (await readFile(join(ROOT, "public/index.html"), "utf8"))
     .replace(/((?:src|href)=")\//g, "$1" + basePath);
-  const routes = new Set(["/", "/menu", "/caffetteria", "/drink", "/vini", "/contatti", ...responses.pages.map(row => row.route)]);
+  const routes = new Set(["/", "/menu", "/caffetteria", "/drink", "/vini", "/contatti", "/admin", "/admin/login", ...responses.pages.map(row => row.route)]);
   for (const route of routes) {
     if (typeof route !== "string" || !/^\/(?:[a-z0-9_-]+\/?)*$/i.test(route)) throw new Error("Rota pública inválida: " + route);
   }
@@ -80,12 +79,9 @@ export async function buildPages({ basePath = process.env.PAGES_BASE_PATH || "/G
   await rm(outDir, { recursive: true, force: true });
   await cp(join(ROOT, "public"), outDir, { recursive: true });
   await writeFile(join(outDir, "assets/app.js"), app);
-  await cp(join(ROOT, "scripts/pages-runtime.js"), join(outDir, "assets/pages-runtime.js"));
-  await cp(join(ROOT, "scripts/pages-auth.js"), join(outDir, "assets/local-auth.js"));
   for (const name of ["style.css", "fonts.css"]) {
     let css = await readFile(join(outDir, "assets", name), "utf8");
     css = css.replace(/url\((["']?)(\/[^)]*?)\1\)/g, (_, quote, path) => "url(" + quote + assetPath(path, basePath) + quote + ")");
-    if (name === "style.css") css += '\n/* A gestão permanece na versão local. */\na[aria-label="Area riservata"]{display:none}\n';
     await writeFile(join(outDir, "assets", name), css);
   }
   await mkdir(join(outDir, "api"), { recursive: true });

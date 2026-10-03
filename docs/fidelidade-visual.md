@@ -2,11 +2,11 @@
 
 Verificação feita em 3 de outubro de 2026 na página `/contatti`, a partir da comparação enviada pelo usuário.
 
-O CSS local é idêntico ao arquivo público `/assets/index-CB-neXhC.css`, descontando somente o import das fontes Google substituído por arquivos locais. O tema ativo em `.local/site.json` também coincide com a resposta pública `/api/theme` do original.
+O CSS do projeto é idêntico ao arquivo público `/assets/index-CB-neXhC.css`, descontando somente o import das fontes Google substituído por arquivos hospedados junto com o site. O tema em `data/site.json` também coincide com a resposta pública `/api/theme` do original. O site atual é acessado exclusivamente pelo [GitHub Pages](https://edneypugliese.github.io/Giannino_Bistrot/); as medidas abaixo registram a comparação inicial da aparência.
 
 Na comparação enviada, a área de conteúdo de cada janela tem aproximadamente a mesma largura física. Entretanto, o original recebe **752 pixels CSS**, enquanto o site local recebe aproximadamente **836 pixels CSS**. A relação é compatível com o zoom local em **90%** do zoom usado no original. Como o layout muda a partir de **768 pixels CSS**, isso explica o título maior, o espaçamento diferente e o mapa ao lado na cópia.
 
-Para comparar no Chrome, use **Ctrl+0 em cada uma das duas janelas**, mantenha as janelas com a mesma largura e abra a mesma página. O Chrome pode memorizar um zoom diferente para cada endereço, incluindo `localhost`.
+Para comparar no Chrome, use **Ctrl+0 em cada uma das duas janelas**, mantenha as janelas com a mesma largura e abra a mesma página. O Chrome pode memorizar um zoom diferente para cada endereço.
 
 ## Medidas verificadas em condições iguais
 

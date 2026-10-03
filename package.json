@@ -1,18 +1,17 @@
 {
-  "name": "giannino-bistrot-local",
+  "name": "giannino-bistrot",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Cópia local do Giannino Bistrot Cafè com dados e arquivos públicos preservados",
+  "description": "Site público do Giannino Bistrot Cafè publicado exclusivamente no GitHub Pages",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "start": "node server/index.mjs",
-    "dev": "node --watch server/index.mjs",
+    "frontend:prepare": "node scripts/prepare-public-app.mjs",
     "build:pages": "node scripts/build-pages.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check server/index.mjs && node --check public/assets/local-auth.js && node --check public/assets/app.js && node --check scripts/build-pages.mjs && node --check scripts/pages-runtime.js && node --check scripts/pages-auth.js && node --check scripts/validate-catalog.mjs && node --check scripts/firestore-catalog.mjs && node --check scripts/firebase-client.mjs && node --check scripts/firebase-catalog.mjs",
+    "check": "node --check public/assets/app.js && node --check public/assets/pages-runtime.js && node --check scripts/build-pages.mjs && node --check scripts/prepare-public-app.mjs && node --check scripts/validate-catalog.mjs && node --check scripts/firestore-catalog.mjs && node --check scripts/firebase-client.mjs && node --check scripts/firebase-catalog.mjs",
     "catalog:validate": "node scripts/validate-catalog.mjs",
     "firebase:plan": "node scripts/firebase-catalog.mjs plan",
     "firebase:import": "node scripts/firebase-catalog.mjs import",

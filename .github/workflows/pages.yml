@@ -23,8 +23,10 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
-      - name: Testar servidor local e versão estática
-        run: node --test tests/server.test.mjs tests/pages.test.mjs
+      - name: Verificar sintaxe
+        run: npm run check
+      - name: Testar site público e catálogos
+        run: npm test
       - name: Configurar Pages
         id: pages
         uses: actions/configure-pages@v5

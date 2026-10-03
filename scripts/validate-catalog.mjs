@@ -1,11 +1,11 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 export function catalogSource(file) {
-  return file ? resolve(file) : resolve(ROOT, existsSync(resolve(ROOT, ".local/site.json")) ? ".local/site.json" : "data/site.json");
+  return file ? resolve(file) : resolve(ROOT, "data/site.json");
 }
 
 export function validateCatalog(site) {
