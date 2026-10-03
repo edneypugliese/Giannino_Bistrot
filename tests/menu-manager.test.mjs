@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { categoryPath, filterCatalog, isPublished, productValues, categoryValues, publicCatalog, publicCatalogDocument, euroCents } from "../public/assets/catalog-model.js";
+import { categoryPath, filterCatalog, groupProducts, productValues, categoryValues, publicCatalog, publicCatalogDocument, euroCents } from "../public/assets/catalog-model.js";
 import { createCatalogClient } from "../src/catalog-store.js";
 
 const catalog = () => ({
@@ -18,19 +18,28 @@ const catalog = () => ({
   ],
 });
 
-test("a busca combina seção, categoria, status e texto, incluindo itens ocultos", () => {
+test("a busca combina seção, categoria e texto sem excluir registros legados", () => {
   const data = catalog();
   assert.equal(filterCatalog(data).length, 3);
-  assert.deepEqual(filterCatalog(data, { section: "menu", category: "child", search: "caffe", status: "published" }).map(row => row.id), ["one"]);
-  assert.deepEqual(filterCatalog(data, { status: "hidden" }).map(row => row.id), ["two"]);
-  assert.deepEqual(filterCatalog(data, { status: "unavailable" }).map(row => row.id), ["three"]);
+  assert.deepEqual(filterCatalog(data, { section: "menu", category: "child", search: "caffe" }).map(row => row.id), ["one"]);
+  assert.deepEqual(filterCatalog(data, { section: "drink", search: "spritz" }).map(row => row.id), ["two"]);
+  assert.deepEqual(filterCatalog(data, { section: "menu", search: "spritz" }), []);
   assert.equal(filterCatalog(data, { search: "specialita" }).length, 1);
   assert.equal(categoryPath(data.categories[1], data.categories), "Piatti › Specialità");
-  data.categories[0].visible = false;
-  assert.equal(isPublished(data.products[0], data.categories, data.sections), false);
-  data.categories[0].visible = true;
-  data.sections[0].visible = false;
-  assert.equal(isPublished(data.products[0], data.categories, data.sections), false);
+});
+
+test("grupos preservam ordem e hierarquia de categorias, sem dividir ou perder produtos", () => {
+  const data = catalog();
+  data.categories[1].sort_order = 0;
+  data.categories[0].sort_order = 5;
+  data.products.push({ ...data.products[0], id: "four", sort_order: 2 });
+  const groups = groupProducts(data.products, data.categories);
+  assert.deepEqual(groups.map(group => group.category.id), ["bar", "main", "child"]);
+  assert.deepEqual(groups.find(group => group.category.id === "child").products.map(row => row.id), ["one", "four"]);
+  assert.equal(groups.flatMap(group => group.products).length, data.products.length);
+  const matches = filterCatalog(data, { section: "menu", search: "specialita" });
+  assert.deepEqual(groupProducts(matches, data.categories).map(group => group.category.id), ["child"]);
+  assert.equal(groupProducts([{ id: "orphan", category_id: "missing" }], data.categories)[0].category, null);
 });
 
 test("preços aceitam euros italianos, ausência de preço e notas sem perder centavos", () => {
@@ -46,7 +55,10 @@ test("preços aceitam euros italianos, ausência de preço e notas sem perder ce
   assert.equal(productValues({ ...row, price: "" }, catalog()).price, null);
   assert.throws(() => productValues({ ...row, name: " " }, catalog()), /obbligatorio/);
   assert.throws(() => productValues({ ...row, category_id: "missing" }, catalog()), /categoria/);
-  assert.throws(() => productValues({ ...row, visible: "true" }, catalog()), /non valido/);
+  const published = productValues({ ...row, visible: false, available: false }, catalog());
+  assert.equal(published.visible, true);
+  assert.equal(published.available, true);
+  assert.equal(categoryValues({ ...catalog().categories[0], visible: false }, catalog()).visible, true);
   assert.throws(() => productValues({ ...row, sort_order: -1 }, catalog()), /ordine/);
   assert.throws(() => productValues({ ...row, description: "a".repeat(4001) }, catalog()), /4000/);
 });
@@ -59,21 +71,23 @@ test("categorias rejeitam ciclos, pais de outra seção e mudanças de seção",
   assert.equal(categoryValues({ ...data.categories[1], parent_id: "" }, data).parent_id, null);
 });
 
-test("projeção pública filtra ancestrais ocultos, indisponibilidade e metadados internos", () => {
+test("projeção pública inclui todo o cardápio mesmo com flags antigas e mantém metadados privados", () => {
   const data = catalog();
   data.products[0].private_note = "Nunca publicar";
   data.products[0].created_at = "2026-10-03";
   let result = publicCatalog(data, "menu");
-  assert.deepEqual(result.products.map(row => row.id), ["one"]);
+  assert.deepEqual(result.products.map(row => row.id), ["one", "three"]);
   assert.ok(!JSON.stringify(result).includes("Nunca publicar"));
   assert.ok(!JSON.stringify(result).includes("created_at"));
   data.categories[0].visible = false;
   result = publicCatalog(data, "menu");
-  assert.equal(result.categories.length, 0);
-  assert.equal(result.products.length, 0);
-  data.categories[0].visible = true;
+  assert.equal(result.categories.length, 2);
+  assert.equal(result.products.length, 2);
   data.sections[0].visible = false;
-  assert.deepEqual(publicCatalog(data, "menu"), { categories: [], products: [] });
+  assert.equal(publicCatalog(data, "menu").products.length, 2);
+  assert.ok(publicCatalog(data, "menu").categories.every(row => row.visible === true));
+  assert.ok(publicCatalog(data, "menu").products.every(row => row.visible === true && row.available === true));
+  assert.equal(publicCatalog(data, "drink").products[0].visible, true);
   assert.equal(publicCatalogDocument(data, "menu").schema_version, 1);
 });
 
@@ -126,7 +140,9 @@ test("CRUD de produto preserva campos extras, calcula preço e persiste remoçã
   publicMenu = JSON.parse(documents.get("public_catalogs/menu").payload);
   const publicDrinks = JSON.parse(documents.get("public_catalogs/drink").payload);
   assert.ok(!publicMenu.products.some(row => row.id === created.id));
-  assert.ok(!publicDrinks.products.some(row => row.id === created.id));
+  assert.ok(publicDrinks.products.some(row => row.id === created.id));
+  assert.equal(changed.visible, true);
+  assert.equal(changed.available, true);
   await client.deleteProduct(changed);
   assert.equal(documents.has(`products/${created.id}`), false);
   assert.equal(documents.get("_catalog/revision").revision, 3);
@@ -152,6 +168,7 @@ test("categorias só podem ser removidas quando vazias e validações não grava
   assert.equal(documents.has("_catalog/revision"), false);
   assert.equal(documents.get("categories/main").parent_id, null);
   const created = await client.saveCategory({ section: "menu", name: "Vuota", parent_id: null, description: null, schedule: null, sort_order: 4, visible: false });
+  assert.equal(documents.get(`categories/${created.id}`).visible, true);
   await client.deleteCategory(documents.get(`categories/${created.id}`));
   assert.equal(documents.has(`categories/${created.id}`), false);
   assert.equal(documents.has("categories/main"), true);
@@ -162,9 +179,10 @@ test("alterações de categoria republicam os filhos e falhas de publicação s�
   const { client, documents } = database();
   const main = documents.get("categories/main");
   await client.saveCategory({ ...main, visible: false }, main);
-  assert.deepEqual(JSON.parse(documents.get("public_catalogs/menu").payload), { categories: [], products: [] });
+  assert.equal(documents.get("categories/main").visible, true);
+  assert.equal(JSON.parse(documents.get("public_catalogs/menu").payload).products.length, 2);
   await client.saveCategory({ ...main, visible: true }, documents.get("categories/main"));
-  assert.equal(JSON.parse(documents.get("public_catalogs/menu").payload).products.length, 1);
+  assert.equal(JSON.parse(documents.get("public_catalogs/menu").payload).products.length, 2);
   for (let index = 0; index < 150; index++) documents.set(`products/large-${index}`, { ...catalog().products[0], id: `large-${index}`, description: "x".repeat(4000) });
   const before = documents.get("products/one");
   await assert.rejects(client.saveProduct({ ...before, price: "11,50" }, before), /limite di pubblicazione/);

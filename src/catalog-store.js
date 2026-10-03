@@ -119,7 +119,7 @@ export function createCatalogClient(db, { sdk = defaultSdk, timeoutMs = 15000 } 
       const oldCategory = table === "products" && catalog.categories.find(row => row.id === current?.category_id);
       const affected = new Set([current?.section || oldCategory?.section, clean?.section].filter(section => Object.hasOwn(SECTION_LABELS, section)));
       // Bloqueia também os metadados da seção; uma edição pelo Console durante
-      // a publicação deve fazer a transação conferir novamente a visibilidade.
+      // a publicação deve fazer a transação conferir novamente os dados da seção.
       for (const section of affected) {
         const definition = await transaction.get(ref("sections", section));
         const index = catalog.sections.findIndex(row => (row.section_key || row.id) === section);

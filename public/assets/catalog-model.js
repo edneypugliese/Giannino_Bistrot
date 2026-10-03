@@ -17,41 +17,42 @@ export function categoryPath(category, categories) {
   return names.join(" › ");
 }
 
-export function isPublished(product, categories, sections = []) {
-  if (!product.visible || !product.available) return false;
-  let category = categories.find(row => row.id === product.category_id);
-  if (!category) return false;
-  if (sections.find(section => (section.section_key || section.id) === category.section)?.visible === false) return false;
-  const visited = new Set();
-  while (category) {
-    if (!category.visible || visited.has(category.id)) return false;
-    visited.add(category.id);
-    category = categories.find(row => row.id === category.parent_id);
+// Cada categoria fica inteira, com os filhos depois do pai e seus produtos em ordem.
+export function groupProducts(products, categories) {
+  const byCategory = new Map();
+  for (const product of sorted(products)) {
+    if (!byCategory.has(product.category_id)) byCategory.set(product.category_id, []);
+    byCategory.get(product.category_id).push(product);
   }
-  return true;
+  const ordered = sorted(categories);
+  const ids = new Set(ordered.map(row => row.id));
+  const visited = new Set();
+  const groups = [];
+  const visit = category => {
+    if (visited.has(category.id)) return;
+    visited.add(category.id);
+    if (byCategory.has(category.id)) groups.push({ category, products: byCategory.get(category.id) });
+    for (const child of ordered.filter(row => row.parent_id === category.id)) visit(child);
+  };
+  for (const category of ordered.filter(row => !ids.has(row.parent_id))) visit(category);
+  for (const category of ordered) visit(category);
+  // Conserva também um registro órfão no painel para permitir corrigir a categoria.
+  const orphaned = sorted(products.filter(row => !ids.has(row.category_id)));
+  if (orphaned.length) groups.push({ category: null, products: orphaned });
+  return groups;
 }
 
-function publicCategory(category, catalog, section) {
-  const visited = new Set();
-  while (category) {
-    if (!category.visible || category.section !== section || visited.has(category.id)) return false;
-    visited.add(category.id);
-    category = catalog.categories.find(row => row.id === category.parent_id);
-  }
-  return true;
-}
-
-// Nunca publica campos extras, metadados internos ou registros ocultos.
+// Publica todos os itens do cardápio; campos extras e metadados ficam privados.
 export function publicCatalog(catalog, section) {
   const definition = catalog.sections.find(row => (row.section_key || row.id) === section);
-  if (!definition || !definition.visible) return { categories: [], products: [] };
+  if (!definition) return { categories: [], products: [] };
   const pick = (row, fields) => Object.fromEntries(fields.filter(key => key in row).map(key => [key, row[key]]));
-  const categories = sorted(catalog.categories.filter(row => row.section === section && publicCategory(row, catalog, section)));
+  const categories = sorted(catalog.categories.filter(row => row.section === section));
   const ids = new Set(categories.map(row => row.id));
   return {
-    categories: categories.map(row => pick(row, ["id", "section", "name", "description", "schedule", "parent_id", "sort_order", "visible"])),
-    products: sorted(catalog.products.filter(row => ids.has(row.category_id) && row.visible && row.available))
-      .map(row => pick(row, ["id", "category_id", "name", "description", "price", "sort_order", "visible", "available"])),
+    categories: categories.map(row => ({ ...pick(row, ["id", "section", "name", "description", "schedule", "parent_id", "sort_order"]), visible: true })),
+    products: sorted(catalog.products.filter(row => ids.has(row.category_id)))
+      .map(row => ({ ...pick(row, ["id", "category_id", "name", "description", "price", "sort_order"]), visible: true, available: true })),
   };
 }
 
@@ -61,17 +62,13 @@ export function publicCatalogDocument(catalog, section, updatedAt = new Date().t
   return { schema_version: 1, payload, updated_at: updatedAt };
 }
 
-export function filterCatalog(catalog, { section = "", category = "", status = "", search = "", view = "products" } = {}) {
+export function filterCatalog(catalog, { section = "", category = "", search = "", view = "products" } = {}) {
   const term = search.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("it");
   const matches = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("it").includes(term);
   return sorted(catalog[view]).filter(row => {
     const parent = view === "products" ? catalog.categories.find(item => item.id === row.category_id) : row;
     if (section && parent?.section !== section) return false;
     if (category && (view === "products" ? row.category_id !== category : row.id !== category && row.parent_id !== category)) return false;
-    if (status === "hidden" && row.visible) return false;
-    if (status === "visible" && !row.visible) return false;
-    if (view === "products" && status === "unavailable" && row.available) return false;
-    if (view === "products" && status === "published" && !isPublished(row, catalog.categories, catalog.sections)) return false;
     return !term || [row.name, row.description, row.price, row.schedule, row.id, categoryPath(parent, catalog.categories), SECTION_LABELS[parent?.section] || parent?.section].some(matches);
   });
 }
@@ -89,11 +86,6 @@ function order(value) {
   const number = Number(value);
   if (!Number.isSafeInteger(number) || number < 0 || number > 1000000) throw new Error("L'ordine deve essere un numero intero tra 0 e 1000000.");
   return number;
-}
-
-function boolean(value, label) {
-  if (typeof value !== "boolean") throw new Error(`${label}: valore non valido.`);
-  return value;
 }
 
 export function euroCents(price) {
@@ -119,8 +111,8 @@ export function productValues(input, catalog) {
     price_cents: euroCents(price),
     currency: "EUR",
     sort_order: order(input.sort_order),
-    visible: boolean(input.visible, "Visibilità"),
-    available: boolean(input.available, "Disponibilità"),
+    visible: true,
+    available: true,
   };
 }
 
@@ -144,6 +136,6 @@ export function categoryValues(input, catalog) {
     schedule: text(input.schedule, "Orario", { max: 200 }),
     parent_id: parentId,
     sort_order: order(input.sort_order),
-    visible: boolean(input.visible, "Visibilità"),
+    visible: true,
   };
 }

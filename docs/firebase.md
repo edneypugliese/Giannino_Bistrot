@@ -118,7 +118,9 @@ fechados aos clientes. O Console e as ferramentas de migração usam permissões
 
 `public_catalogs/{menu|caffetteria|drink|vini}` permite leitura individual pública
 das projeções de itens publicados. Listagem, exclusão e escrita não autorizada
-são negadas. As projeções omitem dados administrativos e itens ocultos.
+são negadas. As projeções incluem todos os produtos e categorias da seção e
+omitem dados administrativos. Produtos e categorias salvos permanecem visíveis;
+as regras exigem `visible: true` e, nos produtos, `available: true`.
 Os índices em `firestore.indexes.json` permitem consultas por seção ou categoria.
 
 O comando `npm run firebase:security` testa as regras com a Firebase Rules API:

@@ -7,6 +7,7 @@ rules_version = '2';
 //   price_cents?, currency EUR, sort_order, visible, available, datas.
 // _catalog/revision: revision inteiro crescente, updated_at timestamp.
 // public_catalogs/{section}: projeção pública {schema_version:1,payload:JSON,updated_at}.
+// Produtos e categorias são sempre publicados: visible/available permanecem true.
 // _imports e todos os outros caminhos permanecem restritos ao IAM.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -32,7 +33,7 @@ service cloud.firestore {
         && d.section in ['menu', 'caffetteria', 'drink', 'vini']
         && nullableText(d.description, 4000)
         && d.sort_order is int && d.sort_order >= 0 && d.sort_order <= 1000000
-        && d.visible is bool && validDate(d.created_at)
+        && d.visible == true && validDate(d.created_at)
         && d.updated_at is timestamp && d.updated_at == request.time;
     }
     function revisionAdvanced() {
@@ -54,7 +55,7 @@ service cloud.firestore {
         && d.keys().hasOnly(['id', 'category_id', 'section', 'name', 'description', 'price', 'price_cents', 'currency', 'sort_order', 'visible', 'available', 'created_at', 'updated_at'])
         && baseFields(d, id) && validId(d.category_id)
         && getAfter(/databases/$(database)/documents/categories/$(d.category_id)).data.section == d.section
-        && nullableText(d.price, 100) && d.currency == 'EUR' && d.available is bool
+        && nullableText(d.price, 100) && d.currency == 'EUR' && d.available == true
         && (d.price_cents == null || (d.price_cents is int && d.price_cents >= 0 && d.price_cents <= 9007199254740991));
     }
     function isValidRevision(d) {

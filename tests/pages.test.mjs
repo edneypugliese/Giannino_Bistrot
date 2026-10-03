@@ -25,7 +25,13 @@ test("o Pages preserva o snapshot público, com links diretos e recursos no subd
     const catalog = JSON.parse(await readFile(join(outDir, "api", "catalog-" + section + ".json"), "utf8"));
     assert.equal(catalog.categories.length, categories);
     assert.equal(catalog.products.length, products);
-    for (const product of catalog.products) assert.deepEqual(product, site.products.find(row => row.id === product.id));
+    for (const product of catalog.products) {
+      const source = site.products.find(row => row.id === product.id);
+      for (const key of ["id", "category_id", "name", "description", "price", "sort_order"]) assert.deepEqual(product[key], source[key]);
+      assert.equal(product.visible, true);
+      assert.equal(product.available, true);
+      assert.ok(!Object.hasOwn(product, "created_at"));
+    }
   }
 
   await buildPages({ basePath: "/Giannino_Bistrot/", outDir });
@@ -86,7 +92,7 @@ test("atualizar um módulo invalida o cache da entrada, dos imports e dos estilo
   assert.notEqual(second.filenames.get("style.css"), first.filenames.get("style.css"));
 });
 
-test("a exportação filtra itens ocultos e indisponíveis e atualiza as páginas personalizadas", async t => {
+test("a exportação publica todo o cardápio e preserva os controles das outras páginas", async t => {
   const { outDir } = await fixture(t);
   const site = JSON.parse(await readFile(new URL("../data/site.json", import.meta.url), "utf8"));
   const hiddenCategory = site.categories[0];
@@ -95,6 +101,7 @@ test("a exportação filtra itens ocultos e indisponíveis e atualiza as página
   hiddenProduct.visible = false;
   const unavailableProduct = site.products.find(row => row.visible && row.category_id !== hiddenCategory.id);
   unavailableProduct.available = false;
+  site.pages.find(row => row.section_key === "menu").visible = false;
   site.home.images.push({ id: "private-image", url: "/img/private.jpg", visible: false });
   site.home.events.push({ id: "private-event", title: "Evento privado", visible: false });
   site.contact.items[0].visible = false;
@@ -104,7 +111,14 @@ test("a exportação filtra itens ocultos e indisponíveis e atualiza as página
   const pages = JSON.parse(await readFile(join(outDir, "api/pages.json"), "utf8"));
   assert.match(pages.find(row => row.id === "custom-page").html, /src="\/Giannino_Bistrot\/img\/hero-sala.jpg"/);
   const exported = (await Promise.all((await readdir(join(outDir, "api"))).map(name => readFile(join(outDir, "api", name), "utf8")))).join("");
-  for (const id of [hiddenCategory.id, hiddenProduct.id, unavailableProduct.id, "private-image", "private-event", site.contact.items[0].id]) assert.ok(!exported.includes(id), id);
+  for (const id of [hiddenCategory.id, hiddenProduct.id, unavailableProduct.id]) assert.ok(exported.includes(id), id);
+  for (const id of ["private-image", "private-event", site.contact.items[0].id]) assert.ok(!exported.includes(id), id);
+  assert.equal(pages.find(row => row.section_key === "menu").visible, true);
+  for (const section of ["menu", "caffetteria", "drink", "vini"]) {
+    const data = JSON.parse(await readFile(join(outDir, "api", `catalog-${section}.json`), "utf8"));
+    assert.ok(data.categories.every(row => row.visible === true));
+    assert.ok(data.products.every(row => row.visible === true && row.available === true));
+  }
   site.pages = site.pages.filter(row => row.id !== "custom-page");
   await buildPages({ outDir, site });
   await assert.rejects(stat(join(outDir, "p/eventi/index.html")), { code: "ENOENT" });

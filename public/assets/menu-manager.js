@@ -1,11 +1,11 @@
-import { EMPTY_CATALOG, SECTION_LABELS, sorted, categoryPath, isPublished, filterCatalog, productValues, categoryValues, euroCents } from "./catalog-model.js";
+import { EMPTY_CATALOG, SECTION_LABELS, sorted, categoryPath, groupProducts, filterCatalog, productValues, categoryValues, euroCents } from "./catalog-model.js";
 
 const PAGE_SIZE = 20;
 const FIELD_LABELS = {
   id: "ID", name: "Nome", title: "Titolo", description: "Descrizione", section: "Sezione", section_key: "Chiave sezione",
   category_id: "ID categoria", parent_id: "ID categoria superiore", source_parent_id: "Riferimento originale",
   price: "Prezzo", price_cents: "Prezzo in centesimi", currency: "Valuta", sort_order: "Ordine",
-  visible: "Visibile", available: "Disponibile", created_at: "Creato il", updated_at: "Aggiornato il",
+  created_at: "Creato il", updated_at: "Aggiornato il",
   schedule: "Orario", route: "Pagina", subtitle: "Sottotitolo", footer_note: "Nota a piè di pagina", show_index: "Indice",
 };
 
@@ -32,7 +32,7 @@ export function createMenuManager(React, catalogClient) {
   function Metadata({ record, open = false, label = "Tutti i dati del record" }) {
     return h("details", { className: "mm-metadata", open },
       h("summary", null, label),
-      h("dl", null, Object.entries(record).map(([key, value]) => h(React.Fragment, { key },
+      h("dl", null, Object.entries(record).filter(([key]) => !["visible", "available"].includes(key)).map(([key, value]) => h(React.Fragment, { key },
         h("dt", null, FIELD_LABELS[key] || key), h("dd", null, metadataValue(value))))));
   }
 
@@ -60,7 +60,6 @@ export function createMenuManager(React, catalogClient) {
     const [draft, setDraft] = useState(() => record ? { ...record, price: record.price || "", description: record.description || "", schedule: record.schedule || "", parent_id: record.parent_id || "" } : {
       name: "", description: "", price: "", category_id: defaultCategory?.id || "", section: defaultCategory?.section || defaultSection,
       parent_id: "", schedule: "", sort_order: Math.max(-1, ...catalog[kind].filter(row => product ? row.category_id === defaultCategory?.id : row.section === defaultSection).map(row => row.sort_order || 0)) + 1,
-      visible: true, available: true,
     });
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -111,7 +110,7 @@ export function createMenuManager(React, catalogClient) {
       finally { setBusy(false); }
     }
 
-    return h(Modal, { title: `${record ? "Modifica" : "Nuovo"} ${product ? "prodotto" : "categoria"}`, intro: "Le modifiche salvate aggiornano il catalogo del sito.", onClose: close, busy },
+    return h(Modal, { title: `${record ? "Modifica" : "Nuovo"} ${product ? "prodotto" : "categoria"}`, intro: "Le modifiche salvate sono pubblicate subito nel menù del sito.", onClose: close, busy },
       h("form", { onSubmit: submit },
         h("fieldset", { disabled: busy, className: "mm-form", style: { border: 0, padding: 0, margin: 0 } },
           field("name", "Nome *", "text", { full: true }),
@@ -126,11 +125,7 @@ export function createMenuManager(React, catalogClient) {
           field("description", "Descrizione", "textarea", { full: true }),
           product ? field("price", "Prezzo (€)", "text", { placeholder: "es. 15,00", inputMode: "text" }) : field("schedule", "Orario", "text", { placeholder: "es. Dalle 12:00 alle 15:00" }),
           field("sort_order", "Ordine di visualizzazione *", "number", { min: 0, max: 1000000, step: 1 }),
-          product && h("p", { className: "mm-help mm-full" }, "Usa la virgola per i decimali. Puoi lasciare il prezzo vuoto o inserire una nota, ad esempio “al calice”."),
-          h("div", { className: "mm-checks mm-full" },
-            h("label", { className: "mm-checkbox" }, h("input", { type: "checkbox", checked: draft.visible, onChange: event => update("visible", event.target.checked) }), "Visibile sul sito"),
-            product && h("label", { className: "mm-checkbox" }, h("input", { type: "checkbox", checked: draft.available, onChange: event => update("available", event.target.checked) }), "Disponibile")),
-          product && h("p", { className: "mm-help mm-full" }, "Un prodotto compare nel menù quando è visibile, disponibile e appartiene a una categoria e a una sezione visibili.")),
+          product && h("p", { className: "mm-help mm-full" }, "Usa la virgola per i decimali. Puoi lasciare il prezzo vuoto o inserire una nota, ad esempio “al calice”.")),
         error && h("p", { className: "mm-message mm-message-error", role: "alert", style: { marginTop: 18 } }, error),
         h("div", { className: "mm-dialog-actions" },
           h("button", { type: "button", className: "mm-btn", disabled: busy, onClick: close }, "Annulla"),
@@ -162,7 +157,7 @@ export function createMenuManager(React, catalogClient) {
       ] },
       h("p", { className: "mm-item-name" }, record.name),
       blocked ? h("p", { className: "mm-message", role: "status" }, `Questa categoria contiene ${products} prodotti e ${children} sottocategorie. Spostali o rimuovili prima di eliminare la categoria.`) :
-        h("p", { className: "mm-subtitle" }, "Il record eliminato non sarà più disponibile sul sito. Per nasconderlo temporaneamente, modifica invece la visibilità."),
+        h("p", { className: "mm-subtitle" }, "Il record eliminato sarà rimosso anche dal menù del sito."),
       error && h("p", { className: "mm-message mm-message-error", role: "alert" }, error));
   }
 
@@ -198,6 +193,7 @@ export function createMenuManager(React, catalogClient) {
     const categoryIds = new Set(categories.map(row => row.id));
     const productCount = catalog.products.filter(row => categoryIds.has(row.category_id)).length;
     const sectionRecord = catalog.sections.find(row => (row.section_key || row.id) === section);
+    const productGroups = view === "products" ? groupProducts(rows, categories) : [];
     const sectionName = key => catalog.sections.find(row => (row.section_key || row.id) === key)?.title || SECTION_LABELS[key] || key || "—";
     const sectionTabs = Object.entries(SECTION_LABELS);
     const changeView = next => { setView(next); setPage(1); setMessage(""); };
@@ -213,6 +209,18 @@ export function createMenuManager(React, catalogClient) {
       tabRefs.current[next]?.focus();
     };
     const finish = text => { setEditor(null); setDeleting(null); setMessage(text); };
+
+    const table = (items, label) => h("div", { className: "mm-table-wrap", tabIndex: 0, role: "region", "aria-label": label },
+      h("table", { className: `mm-table mm-table-${view}` },
+        h("thead", null, h("tr", null, ...(view === "products" ? ["Prodotto", "Prezzo", "Azioni"] : ["Categoria", "Percorso", "Contenuto", "Azioni"]).map(label => h("th", { key: label, scope: "col" }, label)))),
+        h("tbody", null, items.map(row => h("tr", { key: row.id },
+          h("td", null, h("p", { className: "mm-item-name" }, row.name), h("p", { className: "mm-description" }, row.description || "—"), row.schedule && h("p", { className: "mm-help" }, row.schedule)),
+          view === "categories" && h("td", null, h("p", { className: "mm-category-name" }, categoryPath(row, catalog.categories))),
+          h("td", null, view === "products" ? h("span", { className: "mm-price" }, row.price ? `${row.price}${euroCents(row.price) !== null && !/^€|€$/.test(row.price.trim()) ? " €" : ""}` : "—") :
+            h("span", { className: "mm-help" }, `${catalog.products.filter(item => item.category_id === row.id).length} prodotti · ${catalog.categories.filter(item => item.parent_id === row.id).length} sottocategorie`)),
+          h("td", null, h("div", { className: "mm-actions" },
+            h("button", { className: "mm-btn mm-btn-small", "aria-label": `Modifica ${row.name}`, onClick: () => { setMessage(""); setEditor({ kind: view, record: row }); } }, "Modifica"),
+            h("button", { className: "mm-btn mm-btn-small mm-btn-danger", "aria-label": `Elimina ${row.name}`, onClick: () => { setMessage(""); setDeleting({ kind: view, record: row }); } }, "Elimina"))))))));
 
     async function logout() {
       if (logoutBusy) return;
@@ -256,28 +264,16 @@ export function createMenuManager(React, catalogClient) {
               h("button", { className: "mm-btn mm-btn-primary", disabled: view === "products" && !categories.length, onClick: () => { setMessage(""); setEditor({ kind: view, record: null }); } }, view === "products" ? "+ Nuovo prodotto" : "+ Nuova categoria"))),
           view === "products" && !categories.length && h("p", { className: "mm-help" }, "Crea prima una categoria in questo menù per aggiungere prodotti."),
           rows.length === 0 ? h("p", { className: "mm-empty" }, "Nessun risultato in questo menù. Prova un'altra ricerca o aggiungi un nuovo elemento.") :
-            h(React.Fragment, null,
-              h("div", { className: "mm-table-wrap", tabIndex: 0, role: "region", "aria-label": "Elementi del catalogo, tabella scorrevole" },
-                h("table", { className: "mm-table" },
-                  h("thead", null, h("tr", null, ...[view === "products" ? "Prodotto" : "Categoria", view === "products" ? "Categoria" : "Percorso", view === "products" ? "Prezzo" : "Contenuto", "Stato", "Azioni"].map(label => h("th", { key: label, scope: "col" }, label)))),
-                  h("tbody", null, visibleRows.map(row => {
-                    const parent = view === "products" ? catalog.categories.find(item => item.id === row.category_id) : row;
-                    const badges = [row.visible ? "Visibile" : "Nascosto"];
-                    if (view === "products") {
-                      if (!row.available) badges.push("Non disponibile");
-                      else if (isPublished(row, catalog.categories, catalog.sections)) badges.push("Pubblicato");
-                      else if (row.visible) badges.push("Categoria o sezione nascosta");
-                    }
-                    return h("tr", { key: row.id },
-                      h("td", null, h("p", { className: "mm-item-name" }, row.name), h("p", { className: "mm-description" }, row.description || "—"), row.schedule && h("p", { className: "mm-help" }, row.schedule)),
-                      h("td", null, h("p", { className: "mm-category-name" }, categoryPath(parent, catalog.categories) || "Categoria non trovata")),
-                      h("td", null, view === "products" ? h("span", { className: "mm-price" }, row.price ? `${row.price}${euroCents(row.price) !== null && !/^€|€$/.test(row.price.trim()) ? " €" : ""}` : "—") :
-                        h("span", { className: "mm-help" }, `${catalog.products.filter(item => item.category_id === row.id).length} prodotti · ${catalog.categories.filter(item => item.parent_id === row.id).length} sottocategorie`)),
-                      h("td", null, h("div", { className: "mm-badges" }, badges.map(label => h("span", { key: label, className: "mm-badge" + (label === "Pubblicato" ? " mm-badge-active" : "") }, label)))),
-                      h("td", null, h("div", { className: "mm-actions" },
-                        h("button", { className: "mm-btn mm-btn-small", "aria-label": `Modifica ${row.name}`, onClick: () => { setMessage(""); setEditor({ kind: view, record: row }); } }, "Modifica"),
-                        h("button", { className: "mm-btn mm-btn-small mm-btn-danger", "aria-label": `Elimina ${row.name}`, onClick: () => { setMessage(""); setDeleting({ kind: view, record: row }); } }, "Elimina"))));
-                  })))),
+            view === "products" ? h("div", { className: "mm-product-groups" }, productGroups.map(({ category, products }) => {
+              const label = category ? categoryPath(category, catalog.categories) : "Categoria da assegnare";
+              const headingId = `mm-category-${category?.id || "unassigned"}`;
+              return h("section", { key: category?.id || "unassigned", className: "mm-product-group", "aria-labelledby": headingId },
+                h("div", { className: "mm-group-heading" }, h("h2", { id: headingId, className: "mm-group-title" }, label),
+                  h("span", { className: "mm-help" }, `${products.length} ${products.length === 1 ? "prodotto" : "prodotti"}`)),
+                category?.schedule && h("p", { className: "mm-group-schedule mm-help" }, category.schedule),
+                table(products, `Prodotti · ${label}`));
+            })) : h(React.Fragment, null,
+              table(visibleRows, "Categorie del menù, tabella scorrevole"),
               h("div", { className: "mm-pagination" }, h("span", null, `Pagina ${currentPage} di ${pages} · ${rows.length} elementi`),
                 h("div", { className: "mm-actions" },
                   h("button", { className: "mm-btn mm-btn-small", disabled: currentPage <= 1, onClick: () => setPage(currentPage - 1) }, "Precedente"),

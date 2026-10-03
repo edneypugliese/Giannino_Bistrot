@@ -61,6 +61,11 @@ for (const [key, value] of [["price_cents", -1], ["currency", "USD"], ["visible"
   check(`invalid product ${key}=${String(value).slice(0,20)}`, admin, "update", "products/test-product", false, { ...product, [key]: value }, product).functionMocks = mocks;
 }
 check("category cannot parent itself", admin, "update", "categories/test-category", false, { ...category, parent_id: category.id }, category).functionMocks = mocks;
+for (const auth of [admin, password]) for (const method of ["create", "update"]) {
+  check("products must stay visible", auth, method, "products/test-product", false, { ...product, visible: false }, product).functionMocks = mocks;
+  check("products must stay available", auth, method, "products/test-product", false, { ...product, available: false }, product).functionMocks = mocks;
+  check("categories must stay visible", auth, method, "categories/test-category", false, { ...category, visible: false }, category).functionMocks = mocks;
+}
 check("product created_at is immutable", admin, "update", "products/test-product", false, { ...product, created_at: "2020-01-01T00:00:00.000Z" }, product).functionMocks = mocks;
 for (const auth of [null, other, unverified, password, otherPassword, unverifiedPassword, custom, missing, admin]) {
   for (const section of ["menu", "caffetteria", "drink", "vini"]) check("public projection read", auth, "get", `public_catalogs/${section}`, true);

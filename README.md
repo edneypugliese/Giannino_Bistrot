@@ -12,7 +12,7 @@ O workflow `.github/workflows/pages.yml` verifica a sintaxe, executa os testes, 
 
 `npm run build:pages` gera a pasta `dist/` a partir de `public/` e do conteúdo versionado de `data/site.json`. Esse comando prepara o pacote de publicação; não inicia um servidor. O caminho padrão é `/Giannino_Bistrot/`. No workflow, o caminho é obtido da configuração do Pages. Para publicar na raiz de um domínio, use `node scripts/build-pages.mjs --base-path /`.
 
-O build exporta apenas conteúdos visíveis e produtos disponíveis, ajusta caminhos de imagens e fontes e cria entradas para os links diretos de Home, Menù, Caffetteria, Drink List, Carta dei Vini, Contatti e páginas personalizadas. As entradas `/admin` e `/admin/login` estão reservadas à integração da administração online com Firebase. Rotas inexistentes exibem a página de conteúdo não encontrado.
+O build exporta todos os produtos e categorias dos cardápios, ajusta caminhos de imagens e fontes e cria entradas para os links diretos de Home, Menù, Caffetteria, Drink List, Carta dei Vini, Contatti e páginas personalizadas. Home, contatos e páginas de conteúdo mantêm seus controles de visibilidade. As entradas `/admin` e `/admin/login` estão reservadas à integração da administração online com Firebase. Rotas inexistentes exibem a página de conteúdo não encontrado.
 
 Use `npm ci` antes do build ou dos testes. O build prepara o Firebase Web SDK com esbuild e inclui esse módulo no pacote estático. O servidor de hospedagem é o próprio GitHub Pages.
 
@@ -20,9 +20,9 @@ O build inclui uma versão no nome dos arquivos JavaScript e CSS e atualiza seus
 
 ## Atualizar os conteúdos
 
-Edite `data/site.json` para alterar textos, contatos, categorias, produtos, preços, disponibilidade e tema. Adicione imagens em `public/img/` e use caminhos como `/img/foto.jpg` no snapshot. Faça commit e push na `main`; o workflow publica as alterações.
+Edite `data/site.json` para alterar textos, contatos, categorias, produtos, preços e tema. Adicione imagens em `public/img/` e use caminhos como `/img/foto.jpg` no snapshot. Faça commit e push na `main`; o workflow publica as alterações.
 
-Os catálogos públicos consultam as projeções do Firestore atualizadas pelo painel. Se essa consulta falhar, exibem o snapshot publicado no Pages. Home, tema e contatos continuam usando o snapshot. Arquivos e credenciais da antiga versão local não são utilizados pela publicação.
+Os catálogos públicos consultam as projeções do Firestore atualizadas pelo painel. Os produtos são agrupados por categoria na administração, e toda alteração salva é publicada automaticamente, sem opções de ocultar produtos ou categorias. Se a consulta ao banco falhar, o site exibe o snapshot publicado no Pages. Home, tema e contatos continuam usando o snapshot. Arquivos e credenciais da antiga versão local não são utilizados pela publicação.
 
 ## Conteúdo preservado
 

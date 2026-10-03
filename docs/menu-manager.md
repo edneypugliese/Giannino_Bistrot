@@ -1,26 +1,31 @@
 # Gerenciamento do cardápio
 
 O painel fica em [Accesso amministratore](https://edneypugliese.github.io/Giannino_Bistrot/admin/login/).
-Depois do login Google autorizado, a página `/admin` mostra o catálogo completo
-do Firestore `giannino-bistrot/catalogo`, incluindo registros ocultos ou
-indisponíveis. O tema e as fontes são os mesmos do site público.
+Depois do login autorizado por Google ou usuário/senha, a página `/admin` mostra
+o catálogo completo do Firestore `giannino-bistrot/catalogo`.
+O tema e as fontes são os mesmos do site público.
 
 ## Uso
 
 - As abas **Menù**, **Caffetteria**, **Drink List** e **Carta dei Vini** mostram
   os itens da seção selecionada. Ao trocar de aba, a busca é limpa e a lista
-  retorna à primeira página de produtos.
+  retorna à lista de produtos.
 - O único filtro é a busca por nome, descrição, categoria ou ID, sempre dentro
   da aba selecionada.
 - **Prodotti** e **Categorie** alternam entre produtos e categorias da aba;
   ambas as listas permitem adicionar, editar ou excluir registros.
+- Produtos aparecem em blocos por categoria, na ordem das categorias e de suas
+  subcategorias. Cada bloco mostra os produtos completos, sem dividir uma
+  categoria entre páginas. A busca mantém apenas os blocos com resultados.
 - **Tutti i dati della sezione** permite consultar todos os campos da seção
   selecionada. As abas também podem ser percorridas pelas setas do teclado.
-- O formulário permite mudar nome, descrição, categoria, preço, ordenação,
-  visibilidade e disponibilidade. Nas categorias, permite mudar também a
+- O formulário permite mudar nome, descrição, categoria, preço e ordenação.
+  Nas categorias, permite mudar também a
   descrição, o horário e a categoria superior.
-- **Tutti i dati del record** mostra todos os campos armazenados, inclusive IDs,
-  datas de criação e atualização e referências originais.
+- **Tutti i dati del record** mostra IDs, datas de criação e atualização e
+  referências originais. As flags antigas de visibilidade não são exibidas.
+- Todas as alterações salvas são publicadas. Não existem opções de ocultar ou
+  tornar itens indisponíveis; para retirar um item do cardápio, use **Elimina**.
 
 Preços usam a notação italiana (`15,50`). Campo vazio mantém preço não informado;
 notas como `al calice` são preservadas. Preços numéricos também recebem o valor
@@ -45,10 +50,12 @@ Datas novas são geradas pelo servidor com `serverTimestamp()`; datas originais
 do snapshot são preservadas.
 
 `public_catalogs/{section}` contém `schema_version: 1`, `payload` JSON e
-`updated_at`. O payload inclui somente os campos públicos de categorias
-visíveis e produtos visíveis/disponíveis. Categorias com ancestrais ocultos e
-seções ocultas não são publicadas. Campos extras e metadados internos não são
-incluídos. A projeção de cada seção suporta até 500.000 caracteres; exceder o
+`updated_at`. O payload inclui os campos públicos de todas as categorias e
+produtos da seção, inclusive registros com flags antigas de ocultação. As flags
+`visible` e `available` são mantidas como `true` para compatibilidade; o salvamento
+e as regras do banco exigem esse estado. Campos extras e metadados internos
+permanecem privados. O snapshot estático segue a mesma política para os cardápios.
+A projeção de cada seção suporta até 500.000 caracteres; exceder o
 limite cancela a transação e exibe uma mensagem no formulário.
 
 O site público lê essas quatro projeções sem login. Ao navegar ou recarregar o

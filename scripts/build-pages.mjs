@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildFirebase } from "./build-firebase.mjs";
+import { publicCatalog } from "../public/assets/catalog-model.js";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const ordered = rows => [...rows].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
@@ -62,7 +63,7 @@ export async function versionAssets(outDir, html, basePath) {
 export function publicResponses(site) {
   const responses = {
     theme: site.theme,
-    pages: ordered(site.pages.filter(row => row.visible)),
+    pages: ordered(site.pages.filter(row => row.kind === "catalog" || row.visible).map(row => row.kind === "catalog" ? { ...row, visible: true } : row)),
     home: {
       ...site.home,
       images: ordered(site.home.images.filter(row => row.visible)),
@@ -73,12 +74,7 @@ export function publicResponses(site) {
   const sections = new Set(["menu", "caffetteria", "drink", "vini", ...responses.pages.filter(row => row.kind === "catalog").map(row => row.section_key)]);
   for (const section of sections) {
     if (!section || !/^[a-z0-9_-]+$/.test(section)) throw new Error("Seção de catálogo inválida: " + section);
-    const categories = site.categories.filter(row => row.section === section && row.visible);
-    const ids = new Set(categories.map(row => row.id));
-    responses["catalog-" + section] = {
-      categories: ordered(categories),
-      products: ordered(site.products.filter(row => ids.has(row.category_id) && row.visible && row.available)),
-    };
+    responses["catalog-" + section] = publicCatalog({ sections: site.pages.filter(row => row.kind === "catalog"), categories: site.categories, products: site.products }, section);
   }
   return responses;
 }
