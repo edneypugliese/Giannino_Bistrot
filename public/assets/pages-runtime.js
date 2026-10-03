@@ -1,6 +1,17 @@
 // O bundle usa /api; no GitHub Pages, cada resposta é um arquivo público.
 const nativeFetch = globalThis.fetch.bind(globalThis);
+const loadFirebaseClient = () => import("./firebase-client.js");
 export const pagesBasePath = new URL("../", import.meta.url).pathname.replace(/\/$/, "") || "/";
+
+async function liveCatalog(section) {
+  let timer;
+  try {
+    const request = loadFirebaseClient().then(module => module.catalogClient.readPublicCatalog(section));
+    return await Promise.race([request, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error("Catalogo non disponibile")), 5000);
+    })]);
+  } finally { clearTimeout(timer); }
+}
 
 function jsonResponse(status, error) {
   return new Response(JSON.stringify({ error }), {
@@ -24,7 +35,18 @@ export async function pagesFetch(input, options = {}) {
   if (["home", "theme", "pages", "contact"].includes(endpoint)) file = endpoint;
   if (endpoint === "catalog") {
     const section = url.searchParams.get("section") || "";
-    if (/^[a-z0-9_-]+$/.test(section)) file = "catalog-" + section;
+    if (/^[a-z0-9_-]+$/.test(section)) {
+      file = "catalog-" + section;
+      if (["menu", "caffetteria", "drink", "vini"].includes(section)) {
+        try {
+          const catalog = await liveCatalog(section);
+          return new Response(JSON.stringify(catalog), {
+            status: 200,
+            headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+          });
+        } catch { /* Mantém o snapshot disponível se a rede ou o Firebase falhar. */ }
+      }
+    }
   }
   if (!file) return jsonResponse(404, "Contenuto non trovato.");
   const target = new URL("../api/" + file + ".json", import.meta.url);
