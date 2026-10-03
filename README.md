@@ -2,6 +2,18 @@
 
 Clone do [site de referência](https://wrg41y-n2xaqy6l5-arcedawebapps1.vercel.app/), com o frontend público original, imagens, ícones, fontes e snapshot dos conteúdos. O servidor Node.js replica as APIs e a autenticação para uso neste computador. Não precisa de npm install, Supabase ou conexão com o site original para exibir os conteúdos.
 
+## GitHub Pages
+
+O site público está preparado para **https://edneypugliese.github.io/Giannino_Bistrot/**. O workflow `.github/workflows/pages.yml` testa, gera e publica o site automaticamente a cada push na branch `main`. Em **Settings → Pages → Build and deployment**, a fonte deve ser **GitHub Actions**, conforme a [documentação do GitHub](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages); essa configuração já está habilitada neste repositório.
+
+`npm run build:pages` gera a pasta `dist/`, usando o conteúdo versionado de `data/site.json`. O build exporta apenas as respostas públicas, ajusta caminhos de imagens e fontes e cria entradas para Home, Menù, Caffetteria, Drink List, Carta dei Vini, Contatti e páginas personalizadas visíveis. Assim, os links diretos e a atualização do navegador funcionam no subdiretório do repositório. A página `404.html` mantém a tela de página não encontrada do site.
+
+O GitHub Pages hospeda arquivos estáticos e não executa o servidor Node.js. **O painel administrativo, login, uploads e gravação de alterações continuam disponíveis somente na versão local**; o botão de administração fica oculto na versão pública. Firebase e credenciais locais não são necessários para exibir o site publicado.
+
+Para atualizar os conteúdos publicados, altere `data/site.json`, faça commit e push na `main`. Edições feitas pelo painel em `.local/site.json` precisam ser incorporadas ao snapshot versionado antes da publicação. Imagens de uploads locais devem ser copiadas para `public/uploads/` quando forem utilizadas no snapshot. A pasta `.local/` nunca é incluída no build.
+
+O caminho padrão do build é `/Giannino_Bistrot/`. Para hospedar na raiz de um domínio, use `node scripts/build-pages.mjs --base-path /`. No workflow, o caminho é obtido automaticamente da configuração do Pages. O build requer Node.js 20 ou superior e usa apenas bibliotecas nativas, sem precisar de `npm install`.
+
 ## Abrir no Windows
 
 1. Dê dois cliques em **iniciar-site.cmd** nesta pasta, ou execute `npm start` no terminal.

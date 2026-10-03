@@ -6,7 +6,8 @@ __pycache__/
 *.log
 reference/
 reference.html
-favicon.svg
+/favicon.svg
+dist/
 # Checkout vazio preexistente; não incorporar outro repositório neste projeto.
 Giannino_Bistrot/
 .secrets/
