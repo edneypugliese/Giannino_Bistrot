@@ -50,3 +50,5 @@ O site publicado fornece os arquivos compilados; seu código-fonte TSX original 
 ## Verificação
 
 `npm run check` verifica a sintaxe. `npm test` testa os catálogos, recursos locais, controle de acesso, gravação persistente, CRUD, visibilidade, ordenação e uploads, usando uma pasta temporária independente dos seus dados.
+
+Para comparar a aparência com o original, use **Ctrl+0 nas duas janelas do navegador** e mantenha a mesma largura. O Chrome pode salvar um zoom diferente para `localhost`, alterando o tamanho dos textos e o ponto em que o mapa passa para a segunda coluna. A [verificação de fidelidade visual](docs/fidelidade-visual.md) registra as medidas conferidas em condições iguais.
